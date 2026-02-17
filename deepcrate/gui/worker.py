@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import traceback
+from inspect import Parameter, Signature, signature
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, QRunnable, Signal
@@ -25,12 +26,29 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
+        self._accepts_progress = _accepts_progress_cb(fn)
 
     def run(self) -> None:
         try:
-            result = self.fn(*self.args, progress_cb=self.signals.progress.emit, **self.kwargs)
+            call_kwargs = dict(self.kwargs)
+            if self._accepts_progress:
+                call_kwargs["progress_cb"] = self.signals.progress.emit
+            result = self.fn(*self.args, **call_kwargs)
         except Exception:
             self.signals.error.emit(traceback.format_exc())
             return
 
         self.signals.finished.emit(result)
+
+
+def _accepts_progress_cb(fn: Callable[..., Any]) -> bool:
+    """Return True when callable accepts a `progress_cb` kwarg."""
+    try:
+        sig: Signature = signature(fn)
+    except Exception:
+        return True
+
+    if "progress_cb" in sig.parameters:
+        return True
+
+    return any(param.kind == Parameter.VAR_KEYWORD for param in sig.parameters.values())

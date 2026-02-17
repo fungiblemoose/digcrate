@@ -14,7 +14,13 @@ class Track(BaseModel):
     bpm: float = 0.0
     musical_key: str = ""  # Camelot notation e.g. "8A"
     energy_level: float = 0.0  # 0.0 - 1.0
+    energy_confidence: float = 1.0  # quality confidence for energy estimate
     duration: float = 0.0  # seconds
+    preview_start: float = 0.0  # seconds
+    needs_review: bool = False
+    review_notes: str = ""
+    has_overrides: bool = False
+    analysis_version: int = 3
 
     @property
     def display_name(self) -> str:
@@ -23,6 +29,12 @@ class Track(BaseModel):
         if self.title:
             return self.title
         return Path(self.file_path).stem if self.file_path else "Unknown"
+
+    @property
+    def review_reasons(self) -> list[str]:
+        if not self.review_notes:
+            return []
+        return [part.strip() for part in self.review_notes.split("|") if part.strip()]
 
 
 class SetPlan(BaseModel):

@@ -7,7 +7,7 @@ struct GapsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Gap Analysis")
-                .font(.largeTitle.bold())
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
 
             GroupBox("Analyze") {
                 HStack {
@@ -22,6 +22,7 @@ struct GapsView: View {
                     Button("Analyze Current Set") {
                         Task { await analyze() }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
             }
 
@@ -36,6 +37,7 @@ struct GapsView: View {
                     TableColumn("Need Key", value: \.suggestedKey)
                 }
                 .frame(minHeight: 420)
+                .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.05)
             }
         }
         .task {

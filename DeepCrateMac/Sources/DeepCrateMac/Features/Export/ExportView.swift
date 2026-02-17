@@ -10,7 +10,7 @@ struct ExportView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Export")
-                .font(.largeTitle.bold())
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
 
             GroupBox("Export Options") {
                 Picker("Set", selection: $selectedSetID) {
@@ -34,7 +34,9 @@ struct ExportView: View {
                 Button("Export Current Set") {
                     Task { await exportSet() }
                 }
+                .buttonStyle(.borderedProminent)
             }
+            .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.05)
         }
         .task {
             await refreshSets()

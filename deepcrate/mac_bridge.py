@@ -19,6 +19,29 @@ def _err(message: str, exit_code: int = 1) -> None:
     raise SystemExit(exit_code)
 
 
+def _track_payload(track) -> dict:
+    artist = (track.artist or "").strip() or "Unknown Artist"
+    title = (track.title or "").strip()
+    if not title:
+        title = Path(track.file_path).stem if track.file_path else "Unknown Track"
+
+    return {
+        "id": track.id,
+        "artist": artist,
+        "title": title,
+        "bpm": track.bpm,
+        "musical_key": track.musical_key,
+        "energy_level": track.energy_level,
+        "energy_confidence": track.energy_confidence,
+        "duration": track.duration,
+        "file_path": track.file_path,
+        "preview_start": track.preview_start,
+        "needs_review": track.needs_review,
+        "review_notes": track.review_notes,
+        "has_overrides": track.has_overrides,
+    }
+
+
 def cmd_scan(args: argparse.Namespace) -> None:
     from deepcrate.gui.services import scan_directory
 
@@ -26,38 +49,62 @@ def cmd_scan(args: argparse.Namespace) -> None:
     _ok(result)
 
 
+def cmd_reanalyze(args: argparse.Namespace) -> None:
+    from deepcrate.gui.services import reanalyze_track
+
+    track = reanalyze_track(args.track_id)
+    _ok({"track": _track_payload(track)})
+
+
+def cmd_override_track(args: argparse.Namespace) -> None:
+    from deepcrate.gui.services import clear_track_override, save_track_override
+
+    if args.clear:
+        track = clear_track_override(args.track_id)
+        _ok({"track": _track_payload(track)})
+        return
+
+    track = save_track_override(
+        track_id=args.track_id,
+        bpm=args.bpm,
+        musical_key=args.key,
+        energy_level=args.energy,
+    )
+    _ok({"track": _track_payload(track)})
+
+
 def cmd_tracks(args: argparse.Namespace) -> None:
     from deepcrate.gui.services import search_library
 
-    tracks = search_library(args.bpm, args.key, args.energy, args.query)
-
-    def artist_for(track) -> str:
-        artist = (track.artist or "").strip()
-        return artist if artist else "Unknown Artist"
-
-    def title_for(track) -> str:
-        title = (track.title or "").strip()
-        if title:
-            return title
-        return Path(track.file_path).stem if track.file_path else "Unknown Track"
+    tracks = search_library(args.bpm, args.key, args.energy, args.query, needs_review=args.needs_review)
 
     _ok(
         {
-            "tracks": [
-                {
-                    "id": t.id,
-                    "artist": artist_for(t),
-                    "title": title_for(t),
-                    "bpm": t.bpm,
-                    "musical_key": t.musical_key,
-                    "energy_level": t.energy_level,
-                    "duration": t.duration,
-                    "file_path": t.file_path,
-                }
-                for t in tracks
-            ]
+            "tracks": [_track_payload(t) for t in tracks]
         }
     )
+
+
+def cmd_delete_tracks(args: argparse.Namespace) -> None:
+    from deepcrate.gui.services import delete_tracks
+
+    try:
+        raw_ids = json.loads(args.track_ids)
+    except Exception as exc:
+        _err(f"Invalid --track-ids payload: {exc}")
+
+    if not isinstance(raw_ids, list):
+        _err("Invalid --track-ids payload: expected a JSON array.")
+
+    normalized_ids: list[int] = []
+    try:
+        for item in raw_ids:
+            normalized_ids.append(int(item))
+    except Exception as exc:
+        _err(f"Invalid --track-ids payload: {exc}")
+
+    result = delete_tracks(normalized_ids)
+    _ok(result)
 
 
 def cmd_plan(args: argparse.Namespace) -> None:
@@ -217,12 +264,29 @@ def parser() -> argparse.ArgumentParser:
     scan.add_argument("--directory", required=True)
     scan.set_defaults(func=cmd_scan)
 
+    reanalyze = sub.add_parser("reanalyze")
+    reanalyze.add_argument("--track-id", required=True, type=int)
+    reanalyze.set_defaults(func=cmd_reanalyze)
+
+    override = sub.add_parser("override-track")
+    override.add_argument("--track-id", required=True, type=int)
+    override.add_argument("--bpm", type=float, default=None)
+    override.add_argument("--key", default=None)
+    override.add_argument("--energy", type=float, default=None)
+    override.add_argument("--clear", action="store_true")
+    override.set_defaults(func=cmd_override_track)
+
     tracks = sub.add_parser("tracks")
     tracks.add_argument("--query", default=None)
     tracks.add_argument("--bpm", default=None)
     tracks.add_argument("--key", default=None)
     tracks.add_argument("--energy", default=None)
+    tracks.add_argument("--needs-review", action="store_true")
     tracks.set_defaults(func=cmd_tracks)
+
+    delete_tracks_cmd = sub.add_parser("delete-tracks")
+    delete_tracks_cmd.add_argument("--track-ids", required=True)
+    delete_tracks_cmd.set_defaults(func=cmd_delete_tracks)
 
     plan = sub.add_parser("plan")
     plan.add_argument("--description", required=True)

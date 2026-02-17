@@ -5,10 +5,12 @@ from __future__ import annotations
 import platform
 import sys
 from functools import partial
+from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QThreadPool, QUrl
+from PySide6.QtCore import QThreadPool, QTimer, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -49,6 +51,8 @@ class LibraryTab(QWidget):
     def __init__(self, thread_pool: QThreadPool) -> None:
         super().__init__()
         self.thread_pool = thread_pool
+        self.search_results = []
+        self.preview_seconds = 30
 
         root = QVBoxLayout(self)
 
@@ -101,18 +105,48 @@ class LibraryTab(QWidget):
         filters.addWidget(self.query_input)
         filters.addWidget(search_btn)
 
-        self.search_table = QTableWidget(0, 6)
-        self.search_table.setHorizontalHeaderLabels(["Artist", "Title", "BPM", "Key", "Energy", "Path"])
-        self.search_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.search_table = QTableWidget(0, 8)
+        self.search_table.setHorizontalHeaderLabels(["Artist", "Title", "BPM", "Key", "Energy", "Status", "Dupes", "Path"])
+        self.search_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.search_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        header = self.search_table.horizontalHeader()
+        for column in range(7):
+            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.Stretch)
+
+        self.audio_output = QAudioOutput(self)
+        self.audio_output.setVolume(1.0)
+        self.media_player = QMediaPlayer(self)
+        self.media_player.setAudioOutput(self.audio_output)
+        self.media_player.errorOccurred.connect(self._on_preview_error)
+
+        self.preview_timer = QTimer(self)
+        self.preview_timer.setSingleShot(True)
+        self.preview_timer.timeout.connect(self._stop_preview)
+
+        preview_controls = QHBoxLayout()
+        self.play_preview_btn = QPushButton("Play Preview")
+        self.stop_preview_btn = QPushButton("Stop")
+        self.stop_preview_btn.setEnabled(False)
+        self.preview_status = QLabel("Select a track, then click Play Preview.")
+
+        self.play_preview_btn.clicked.connect(self._play_preview)
+        self.stop_preview_btn.clicked.connect(self._stop_preview)
+
+        preview_controls.addWidget(self.play_preview_btn)
+        preview_controls.addWidget(self.stop_preview_btn)
+        preview_controls.addWidget(self.preview_status)
 
         search_layout.addLayout(filters)
         search_layout.addWidget(self.search_table)
+        search_layout.addLayout(preview_controls)
 
         root.addWidget(scan_box)
         root.addWidget(stats_box)
         root.addWidget(search_box)
 
         self._refresh_stats()
+        self._search()
 
     def _pick_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "Select music folder")
@@ -152,12 +186,15 @@ class LibraryTab(QWidget):
 
     def _on_scan_done(self, result: dict) -> None:
         self.scan_btn.setEnabled(True)
-        self.scan_progress.setValue(self.scan_progress.maximum())
+        max_value = self.scan_progress.maximum() if self.scan_progress.maximum() > 0 else 1
+        self.scan_progress.setRange(0, max_value)
+        self.scan_progress.setValue(max_value)
         self.scan_status.setText(
             f"Done. Found {result['total']} files | Analyzed {result['analyzed']} | "
             f"Cached {result['skipped']} | Errors {result['errors']}"
         )
         self._refresh_stats()
+        self._search()
 
     def _search(self) -> None:
         try:
@@ -171,6 +208,9 @@ class LibraryTab(QWidget):
             self._error(str(exc))
             return
 
+        self.search_results = tracks
+        hash_counts = services.duplicate_hash_counts()
+
         self.search_table.setRowCount(len(tracks))
         for row, track in enumerate(tracks):
             self.search_table.setItem(row, 0, QTableWidgetItem(track.artist))
@@ -178,7 +218,18 @@ class LibraryTab(QWidget):
             self.search_table.setItem(row, 2, QTableWidgetItem(f"{track.bpm:.0f}"))
             self.search_table.setItem(row, 3, QTableWidgetItem(track.musical_key))
             self.search_table.setItem(row, 4, QTableWidgetItem(f"{track.energy_level:.2f}"))
-            self.search_table.setItem(row, 5, QTableWidgetItem(track.file_path))
+            status = "Online" if Path(track.file_path).exists() else "Missing"
+            self.search_table.setItem(row, 5, QTableWidgetItem(status))
+            duplicates = hash_counts.get(track.file_hash, 0)
+            dupe_text = f"x{duplicates}" if duplicates > 1 else ""
+            self.search_table.setItem(row, 6, QTableWidgetItem(dupe_text))
+            self.search_table.setItem(row, 7, QTableWidgetItem(track.file_path))
+
+        if tracks:
+            self.preview_status.setText(f"{len(tracks)} tracks loaded.")
+        else:
+            self.preview_status.setText("No tracks match this filter.")
+            self._stop_preview(update_status=False)
 
     def _refresh_stats(self) -> None:
         stats = services.compute_library_stats()
@@ -186,18 +237,61 @@ class LibraryTab(QWidget):
             self.stats_label.setText("No tracks in library yet.")
             return
 
-        key_text = ", ".join(f"{k} ({v})" for k, v in stats["top_keys"][:5])
+        key_text = ", ".join(k for k, _ in stats["top_keys"][:3]) or "-"
         self.stats_label.setText(
-            f"Tracks: {stats['total']}\n"
-            f"BPM: {stats['bpm_min']:.0f}-{stats['bpm_max']:.0f} (avg {stats['bpm_avg']:.1f})\n"
-            f"Energy: {stats['energy_min']:.2f}-{stats['energy_max']:.2f} (avg {stats['energy_avg']:.2f})\n"
-            f"Duration: {stats['duration_minutes']} min\n"
-            f"Top Keys: {key_text}"
+            f"{stats['total']} tracks  |  BPM {stats['bpm_min']:.0f}-{stats['bpm_max']:.0f}  |  "
+            f"Energy {stats['energy_avg']:.2f} avg  |  Duration {stats['duration_minutes']} min  |  "
+            f"Top keys {key_text}"
         )
 
     def _on_error(self, trace: str) -> None:
         self.scan_btn.setEnabled(True)
+        self.scan_progress.setRange(0, 1)
+        self.scan_progress.setValue(0)
+        self.scan_status.setText("Scan failed")
         self._error(trace)
+
+    def _selected_track(self):
+        row = self.search_table.currentRow()
+        if row < 0 or row >= len(self.search_results):
+            return None
+        return self.search_results[row]
+
+    def _play_preview(self) -> None:
+        track = self._selected_track()
+        if track is None:
+            self.preview_status.setText("Select a track row first.")
+            return
+
+        file_path = Path(track.file_path)
+        if not file_path.exists():
+            self.preview_status.setText(f"Missing file: {file_path.name}")
+            return
+
+        self._stop_preview(update_status=False)
+
+        self.media_player.setSource(QUrl.fromLocalFile(str(file_path)))
+        self.media_player.setPosition(int(max(track.preview_start, 0) * 1000))
+        self.media_player.play()
+
+        self.preview_timer.start(self.preview_seconds * 1000)
+        self.play_preview_btn.setEnabled(False)
+        self.stop_preview_btn.setEnabled(True)
+        self.preview_status.setText(f"Previewing: {track.artist} - {track.title}")
+
+    def _stop_preview(self, update_status: bool = True) -> None:
+        if self.preview_timer.isActive():
+            self.preview_timer.stop()
+        self.media_player.stop()
+        self.play_preview_btn.setEnabled(True)
+        self.stop_preview_btn.setEnabled(False)
+        if update_status:
+            self.preview_status.setText("Preview stopped.")
+
+    def _on_preview_error(self, _error) -> None:
+        self._stop_preview(update_status=False)
+        detail = self.media_player.errorString().strip() or "Unknown media playback error."
+        self.preview_status.setText(f"Preview error: {detail}")
 
     def _error(self, message: str) -> None:
         QMessageBox.critical(self, "DeepCrate", message)

@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct PlanView: View {
+    private enum FocusTarget: Hashable {
+        case name
+        case description
+    }
+
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var settings: AppSettings
 
@@ -8,13 +13,25 @@ struct PlanView: View {
     @State private var duration: Int = 60
     @State private var description: String = "60 min liquid DnB set, start mellow, peak at 40 min"
     @State private var isPlanning = false
+    @FocusState private var focusedField: FocusTarget?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Plan Set")
-                .font(.largeTitle.bold())
+            HStack {
+                Text("Plan Set")
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
 
-            GroupBox("Planner") {
+                Spacer()
+
+                LiquidStatusBadge(
+                    text: settings.plannerMode == .localApple ? "On-device Apple Model" : "Cloud OpenAI Model",
+                    symbol: settings.plannerMode == .localApple ? "cpu" : "network"
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Planner")
+                    .font(.headline)
                 HStack {
                     Text("Mode")
                     Picker("Planner", selection: $settings.plannerMode) {
@@ -25,28 +42,50 @@ struct PlanView: View {
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 420)
                 }
-            }
 
-            GroupBox("Prompt") {
+                if settings.plannerMode == .localApple {
+                    Text("Uses Apple Foundation Models on-device when available.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.04)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Prompt")
+                    .font(.headline)
                 TextField("Set Name", text: $name)
                     .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .name)
                 Stepper("Duration: \(duration) min", value: $duration, in: 10...360)
                 TextEditor(text: $description)
                     .frame(minHeight: 150)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.quaternary))
+                    .padding(6)
+                    .focused($focusedField, equals: .description)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: LiquidMetrics.compactRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: LiquidMetrics.compactRadius, style: .continuous)
+                            .stroke(.quaternary)
+                            .allowsHitTesting(false)
+                    )
             }
+            .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.04)
 
             HStack {
-                Button(isPlanning ? "Planning..." : "Generate Set") {
+                Button {
                     Task { await planSet() }
+                } label: {
+                    Label(isPlanning ? "Planning..." : "Generate Set", systemImage: "wand.and.stars")
                 }
                 .disabled(isPlanning || name.isEmpty || description.isEmpty)
+                .buttonStyle(.borderedProminent)
 
                 if let latest = appState.setSummaries.first {
                     Text("Latest: \(latest.name)")
                         .foregroundStyle(.secondary)
                 }
             }
+            .liquidCard(cornerRadius: LiquidMetrics.compactRadius, material: .ultraThinMaterial, contentPadding: 10, shadowOpacity: 0.04)
         }
         .task {
             await refreshSets()

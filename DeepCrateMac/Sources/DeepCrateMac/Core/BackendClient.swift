@@ -36,17 +36,110 @@ struct BackendClient {
         return "Found \(result.total) files | analyzed \(result.analyzed) | cached \(result.skipped) | errors \(result.errors)"
     }
 
-    func tracks(query: String, bpm: String, key: String, energy: String) throws -> [Track] {
+    func reanalyze(trackID: Int) throws -> Track {
+        let result: ReanalyzeResponse = try runJSON(["reanalyze", "--track-id", "\(trackID)"])
+        let dto = result.track
+        return Track(
+            id: dto.id,
+            artist: dto.artist,
+            title: dto.title,
+            bpm: dto.bpm,
+            key: dto.musicalKey,
+            energy: dto.energyLevel,
+            energyConfidence: dto.energyConfidence,
+            duration: dto.duration,
+            filePath: dto.filePath,
+            previewStart: dto.previewStart,
+            needsReview: dto.needsReview,
+            reviewNotes: dto.reviewNotes,
+            hasOverrides: dto.hasOverrides
+        )
+    }
+
+    func tracks(query: String, bpm: String, key: String, energy: String, needsReview: Bool = false) throws -> [Track] {
         var args = ["tracks"]
         if !query.isEmpty { args += ["--query", query] }
         if !bpm.isEmpty { args += ["--bpm", bpm] }
         if !key.isEmpty { args += ["--key", key] }
         if !energy.isEmpty { args += ["--energy", energy] }
+        if needsReview { args.append("--needs-review") }
 
         let result: TracksResponse = try runJSON(args)
         return result.tracks.map {
-            Track(id: $0.id, artist: $0.artist, title: $0.title, bpm: $0.bpm, key: $0.musicalKey, energy: $0.energyLevel)
+            Track(
+                id: $0.id,
+                artist: $0.artist,
+                title: $0.title,
+                bpm: $0.bpm,
+                key: $0.musicalKey,
+                energy: $0.energyLevel,
+                energyConfidence: $0.energyConfidence,
+                duration: $0.duration,
+                filePath: $0.filePath,
+                previewStart: $0.previewStart,
+                needsReview: $0.needsReview,
+                reviewNotes: $0.reviewNotes,
+                hasOverrides: $0.hasOverrides
+            )
         }
+    }
+
+    func overrideTrack(
+        trackID: Int,
+        bpm: Double?,
+        key: String?,
+        energy: Double?,
+        clear: Bool = false
+    ) throws -> Track {
+        var args = ["override-track", "--track-id", "\(trackID)"]
+        if let bpm {
+            args += ["--bpm", "\(bpm)"]
+        }
+        if let key, !key.isEmpty {
+            args += ["--key", key]
+        }
+        if let energy {
+            args += ["--energy", "\(energy)"]
+        }
+        if clear {
+            args.append("--clear")
+        }
+
+        let result: ReanalyzeResponse = try runJSON(args)
+        let dto = result.track
+        return Track(
+            id: dto.id,
+            artist: dto.artist,
+            title: dto.title,
+            bpm: dto.bpm,
+            key: dto.musicalKey,
+            energy: dto.energyLevel,
+            energyConfidence: dto.energyConfidence,
+            duration: dto.duration,
+            filePath: dto.filePath,
+            previewStart: dto.previewStart,
+            needsReview: dto.needsReview,
+            reviewNotes: dto.reviewNotes,
+            hasOverrides: dto.hasOverrides
+        )
+    }
+
+    func deleteTracks(trackIDs: [Int]) throws -> DeleteTracksSummary {
+        let unique = Array(Set(trackIDs.filter { $0 > 0 })).sorted()
+        let encodedIDs = String(data: try JSONEncoder().encode(unique), encoding: .utf8) ?? "[]"
+        let result: DeleteTracksResponse = try runJSON(
+            [
+                "delete-tracks",
+                "--track-ids", encodedIDs,
+            ]
+        )
+        return DeleteTracksSummary(
+            requested: result.requested,
+            deleted: result.deleted,
+            missing: result.missing,
+            removedFromSets: result.removedFromSets,
+            clearedGapSets: result.clearedGapSets
+        )
     }
 
     func plan(description: String, name: String, duration: Int) throws {
@@ -166,8 +259,36 @@ private struct ScanResponse: Decodable {
     let errors: Int
 }
 
+private struct ReanalyzeResponse: Decodable {
+    let track: TrackDTO
+}
+
+struct DeleteTracksSummary: Equatable {
+    let requested: Int
+    let deleted: Int
+    let missing: Int
+    let removedFromSets: Int
+    let clearedGapSets: Int
+}
+
 private struct TracksResponse: Decodable {
     let tracks: [TrackDTO]
+}
+
+private struct DeleteTracksResponse: Decodable {
+    let requested: Int
+    let deleted: Int
+    let missing: Int
+    let removedFromSets: Int
+    let clearedGapSets: Int
+
+    enum CodingKeys: String, CodingKey {
+        case requested
+        case deleted
+        case missing
+        case removedFromSets = "removed_from_sets"
+        case clearedGapSets = "cleared_gap_sets"
+    }
 }
 
 private struct TrackDTO: Decodable {
@@ -177,6 +298,13 @@ private struct TrackDTO: Decodable {
     let bpm: Double
     let musicalKey: String
     let energyLevel: Double
+    let energyConfidence: Double
+    let duration: Double
+    let filePath: String
+    let previewStart: Double
+    let needsReview: Bool
+    let reviewNotes: String
+    let hasOverrides: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -185,6 +313,13 @@ private struct TrackDTO: Decodable {
         case bpm
         case musicalKey = "musical_key"
         case energyLevel = "energy_level"
+        case energyConfidence = "energy_confidence"
+        case duration
+        case filePath = "file_path"
+        case previewStart = "preview_start"
+        case needsReview = "needs_review"
+        case reviewNotes = "review_notes"
+        case hasOverrides = "has_overrides"
     }
 }
 

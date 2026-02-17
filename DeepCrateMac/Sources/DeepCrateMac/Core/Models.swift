@@ -7,14 +7,49 @@ struct Track: Identifiable, Hashable {
     var bpm: Double
     var key: String
     var energy: Double
+    var energyConfidence: Double
+    var duration: Double
+    var filePath: String
+    var previewStart: Double
+    var needsReview: Bool
+    var reviewNotes: String
+    var hasOverrides: Bool
 
-    init(id: Int, artist: String, title: String, bpm: Double, key: String, energy: Double) {
+    init(
+        id: Int,
+        artist: String,
+        title: String,
+        bpm: Double,
+        key: String,
+        energy: Double,
+        energyConfidence: Double = 1.0,
+        duration: Double = 0,
+        filePath: String = "",
+        previewStart: Double = 0,
+        needsReview: Bool = false,
+        reviewNotes: String = "",
+        hasOverrides: Bool = false
+    ) {
         self.id = id
         self.artist = artist
         self.title = title
         self.bpm = bpm
         self.key = key
         self.energy = energy
+        self.energyConfidence = energyConfidence
+        self.duration = duration
+        self.filePath = filePath
+        self.previewStart = previewStart
+        self.needsReview = needsReview
+        self.reviewNotes = reviewNotes
+        self.hasOverrides = hasOverrides
+    }
+
+    var displayName: String {
+        if !artist.isEmpty {
+            return "\(artist) - \(title)"
+        }
+        return title
     }
 }
 

@@ -17,37 +17,78 @@ struct RootView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SidebarItem.allCases, selection: $selection) { item in
-                Label(item.rawValue, systemImage: icon(for: item))
+            ZStack {
+                VisualEffectGlass(material: .sidebar, blendingMode: .withinWindow)
+                .ignoresSafeArea()
+
+                List(SidebarItem.allCases, selection: $selection) { item in
+                    HStack(spacing: 10) {
+                        Image(systemName: icon(for: item))
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 22)
+                        Text(item.rawValue)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 6)
                     .tag(item)
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .background(Color.black.opacity(0.06))
             }
             .navigationTitle("DeepCrate")
-            .listStyle(.sidebar)
         } detail: {
-            Group {
-                switch selection ?? .library {
-                case .library:
-                    LibraryView()
-                case .plan:
-                    PlanView()
-                case .sets:
-                    SetsView()
-                case .gaps:
-                    GapsView()
-                case .discover:
-                    DiscoverView()
-                case .export:
-                    ExportView()
+            ZStack {
+                VisualEffectGlass(material: .underWindowBackground, blendingMode: .behindWindow)
+                    .ignoresSafeArea()
+
+                LinearGradient(
+                    colors: [Color.blue.opacity(0.08), Color.white.opacity(0.06), Color.cyan.opacity(0.08)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                Circle()
+                    .fill(Color.white.opacity(0.20))
+                    .frame(width: 460, height: 460)
+                    .blur(radius: 72)
+                    .offset(x: -260, y: -220)
+
+                Circle()
+                    .fill(Color.blue.opacity(0.12))
+                    .frame(width: 560, height: 560)
+                    .blur(radius: 96)
+                    .offset(x: 300, y: 260)
+
+                Group {
+                    switch selection ?? .library {
+                    case .library:
+                        LibraryView()
+                    case .plan:
+                        PlanView()
+                    case .sets:
+                        SetsView()
+                    case .gaps:
+                        GapsView()
+                    case .discover:
+                        DiscoverView()
+                    case .export:
+                        ExportView()
+                    }
                 }
+                .groupBoxStyle(LiquidGroupBoxStyle())
+                .liquidPane(cornerRadius: LiquidMetrics.paneRadius)
+                .padding(20)
             }
-            .padding(20)
-            .background(.regularMaterial)
         }
+        .background(WindowAppearanceConfigurator().frame(width: 0, height: 0))
         .toolbar {
             ToolbarItem(placement: .status) {
-                Text(appState.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                LiquidStatusBadge(text: appState.statusMessage)
             }
         }
     }

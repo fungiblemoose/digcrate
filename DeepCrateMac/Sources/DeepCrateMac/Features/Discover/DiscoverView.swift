@@ -11,7 +11,7 @@ struct DiscoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Discover")
-                .font(.largeTitle.bold())
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
 
             GroupBox("Lookup") {
                 HStack {
@@ -30,6 +30,7 @@ struct DiscoverView: View {
                     Button("Find Suggestions") {
                         Task { await discover() }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
             }
 
@@ -44,6 +45,7 @@ struct DiscoverView: View {
                     TableColumn("URL", value: \.url)
                 }
                 .frame(minHeight: 420)
+                .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.05)
             }
         }
         .task {

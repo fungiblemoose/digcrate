@@ -4,6 +4,7 @@ struct SetsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var selectedSetID: Int?
     @State private var rows: [SetTrackRow] = []
+    @State private var selectedRowID: Int?
 
     private var selectedSet: SetSummary? {
         appState.setSummaries.first(where: { $0.id == selectedSetID })
@@ -12,7 +13,7 @@ struct SetsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Sets")
-                .font(.largeTitle.bold())
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
 
             GroupBox("Set Selection") {
                 HStack {
@@ -30,22 +31,32 @@ struct SetsView: View {
                     Button("Refresh Sets") {
                         Task { await refreshSets() }
                     }
+                    .buttonStyle(.bordered)
                 }
             }
 
             if let setPlan = selectedSet {
-                Text(setPlan.description)
-                    .foregroundStyle(.secondary)
-                Table(rows) {
-                    TableColumn("#") { row in Text("\(row.position)") }
-                    TableColumn("Artist", value: \.artist)
-                    TableColumn("Title", value: \.title)
-                    TableColumn("BPM") { row in Text("\(Int(row.bpm))") }
-                    TableColumn("Key", value: \.key)
-                    TableColumn("Energy") { row in Text(String(format: "%.2f", row.energy)) }
-                    TableColumn("Transition", value: \.transition)
+                HSplitView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(setPlan.description)
+                            .foregroundStyle(.secondary)
+                        Table(rows, selection: $selectedRowID) {
+                            TableColumn("#") { row in Text("\(row.position)") }
+                            TableColumn("Artist", value: \.artist)
+                            TableColumn("Title", value: \.title)
+                            TableColumn("BPM") { row in Text("\(Int(row.bpm))") }
+                            TableColumn("Key", value: \.key)
+                            TableColumn("Energy") { row in Text(String(format: "%.2f", row.energy)) }
+                            TableColumn("Transition", value: \.transition)
+                        }
+                        .frame(minHeight: 420)
+                    }
+                    .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.05)
+
+                    transitionInspector
+                        .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
+                        .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .thinMaterial, contentPadding: 14, shadowOpacity: 0.05)
                 }
-                .frame(minHeight: 420)
             } else {
                 ContentUnavailableView("No set selected", systemImage: "list.number")
             }
@@ -78,8 +89,141 @@ struct SetsView: View {
                 try BackendClient().setTracks(name: name)
             }.value
             rows = loadedRows
+            selectedRowID = loadedRows.first(where: { $0.position > 1 })?.id ?? loadedRows.first?.id
         } catch {
             appState.statusMessage = "Failed to load set tracks: \(error.localizedDescription)"
         }
+    }
+
+    private var selectedRow: SetTrackRow? {
+        guard let selectedRowID else { return nil }
+        return rows.first(where: { $0.id == selectedRowID })
+    }
+
+    private var transitionInspector: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Transition Breakdown")
+                .font(.headline)
+
+            if let row = selectedRow, let previous = previousRow(for: row) {
+                Text("\(previous.displayName) -> \(row.displayName)")
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(2)
+
+                HStack(spacing: 10) {
+                    StatChip(title: "Rating", value: row.transition)
+                    StatChip(title: "BPM Δ", value: "\(Int(abs(row.bpm - previous.bpm).rounded()))")
+                    StatChip(title: "Energy Δ", value: energyDeltaText(from: previous, to: row))
+                }
+
+                Text(transitionExplanation(for: row, previous: previous))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Smart Notes")
+                    .font(.subheadline.weight(.semibold))
+                Text("This explanation is generated from BPM, Camelot key relationship, and energy movement for quick DJ decisions.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else if let row = selectedRow {
+                Text(row.displayName)
+                    .font(.title3.weight(.semibold))
+                Text("This is the opening track, so there is no incoming transition to rate.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Select a track row to inspect why its transition rating is high or low.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private func previousRow(for row: SetTrackRow) -> SetTrackRow? {
+        rows.first(where: { $0.position == row.position - 1 })
+    }
+
+    private func transitionExplanation(for row: SetTrackRow, previous: SetTrackRow) -> String {
+        let bpmDelta = abs(row.bpm - previous.bpm)
+        let bpmText: String
+        if bpmDelta <= 2 {
+            bpmText = "BPM is tightly matched"
+        } else if bpmDelta <= 6 {
+            bpmText = "BPM change is manageable"
+        } else {
+            bpmText = "BPM jump is large"
+        }
+
+        let keyText = keyRelationship(from: previous.key, to: row.key)
+        let energyDelta = row.energy - previous.energy
+        let energyText: String
+        if abs(energyDelta) <= 0.08 {
+            energyText = "energy stays level"
+        } else if energyDelta > 0 {
+            energyText = "energy lifts into the next track"
+        } else {
+            energyText = "energy drops into a calmer section"
+        }
+
+        return "\(bpmText). \(keyText). \(energyText)."
+    }
+
+    private func energyDeltaText(from previous: SetTrackRow, to current: SetTrackRow) -> String {
+        let delta = current.energy - previous.energy
+        return String(format: "%+.2f", delta)
+    }
+
+    private func keyRelationship(from source: String, to destination: String) -> String {
+        guard let start = parseCamelot(source), let end = parseCamelot(destination) else {
+            return "Key relation is unknown"
+        }
+        if start.number == end.number && start.letter == end.letter {
+            return "Same Camelot key"
+        }
+        if start.number == end.number && start.letter != end.letter {
+            return "Relative major/minor pair"
+        }
+        if start.letter == end.letter {
+            let distance = min(abs(start.number - end.number), 12 - abs(start.number - end.number))
+            if distance == 1 {
+                return "Adjacent harmonic keys"
+            }
+            if distance == 2 {
+                return "Two-step key move"
+            }
+        }
+        return "Weak harmonic match"
+    }
+
+    private func parseCamelot(_ value: String) -> (number: Int, letter: Character)? {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard let letter = normalized.last, letter == "A" || letter == "B" else { return nil }
+        guard let number = Int(normalized.dropLast()), (1...12).contains(number) else { return nil }
+        return (number, letter)
+    }
+}
+
+private struct StatChip: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: LiquidMetrics.compactRadius, style: .continuous))
+    }
+}
+
+private extension SetTrackRow {
+    var displayName: String {
+        "\(artist) - \(title)"
     }
 }

@@ -6,17 +6,22 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Callable
 
-from deepcrate.analysis.analyzer import analyze_track, file_hash
+from deepcrate.analysis.analyzer import ANALYSIS_VERSION, analyze_track, file_hash
 from deepcrate.analysis.scanner import find_audio_files
+from deepcrate.config import get_settings
 from deepcrate.db import (
+    delete_tracks_by_ids,
+    delete_track_override,
     get_all_sets,
     get_all_tracks,
     get_gaps,
     get_set_by_name,
     get_set_tracks,
     get_track_by_id,
+    get_track_override,
     get_track_by_path,
     search_tracks,
+    upsert_track_override,
     upsert_track,
 )
 from deepcrate.discovery.spotify import search_tracks as spotify_search
@@ -60,12 +65,18 @@ def scan_directory(directory: str, progress_cb: Callable[[dict], None] | None = 
 
         existing = get_track_by_path(str(audio_file))
         current_hash = file_hash(audio_file)
-        if existing and existing.file_hash == current_hash and (existing.title or "").strip():
+        if (
+            existing
+            and existing.file_hash == current_hash
+            and (existing.title or "").strip()
+            and existing.analysis_version >= ANALYSIS_VERSION
+        ):
             skipped += 1
             continue
 
         try:
             track = analyze_track(audio_file)
+            track = _apply_track_override(track)
             upsert_track(track)
             analyzed += 1
         except Exception:
@@ -78,6 +89,89 @@ def scan_directory(directory: str, progress_cb: Callable[[dict], None] | None = 
         "skipped": skipped,
         "errors": errors,
     }
+
+
+def reanalyze_track(track_id: int) -> Track:
+    """Force re-analysis for a previously imported track."""
+    existing = get_track_by_id(track_id)
+    if existing is None:
+        raise ValueError(f"Track not found: {track_id}")
+
+    path = Path(existing.file_path).expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Track file is missing: {path}")
+
+    track = analyze_track(path)
+    track = _apply_track_override(track)
+    return upsert_track(track)
+
+
+def save_track_override(
+    track_id: int,
+    bpm: float | None = None,
+    musical_key: str | None = None,
+    energy_level: float | None = None,
+) -> Track:
+    """Persist manual corrections and apply them immediately."""
+    existing = get_track_by_id(track_id)
+    if existing is None:
+        raise ValueError(f"Track not found: {track_id}")
+
+    normalized_key = musical_key.strip().upper() if musical_key else None
+    upsert_track_override(
+        file_path=existing.file_path,
+        bpm=bpm,
+        musical_key=normalized_key,
+        energy_level=energy_level,
+    )
+
+    path = Path(existing.file_path).expanduser().resolve()
+    if path.exists():
+        refreshed = analyze_track(path)
+    else:
+        refreshed = existing
+    refreshed = _apply_track_override(refreshed)
+    return upsert_track(refreshed)
+
+
+def clear_track_override(track_id: int) -> Track:
+    """Remove manual corrections and restore analyzer outputs."""
+    existing = get_track_by_id(track_id)
+    if existing is None:
+        raise ValueError(f"Track not found: {track_id}")
+
+    delete_track_override(existing.file_path)
+
+    path = Path(existing.file_path).expanduser().resolve()
+    if path.exists():
+        refreshed = analyze_track(path)
+    else:
+        refreshed = existing.model_copy(update={"has_overrides": False})
+    refreshed = refreshed.model_copy(update={"has_overrides": False})
+    return upsert_track(refreshed)
+
+
+def delete_tracks(track_ids: list[int]) -> dict[str, int]:
+    """Delete tracks from library and clean dependent rows."""
+    normalized: list[int] = []
+    for raw in track_ids:
+        try:
+            value = int(raw)
+        except Exception:
+            continue
+        if value > 0 and value not in normalized:
+            normalized.append(value)
+
+    if not normalized:
+        return {
+            "requested": 0,
+            "deleted": 0,
+            "missing": 0,
+            "removed_from_sets": 0,
+            "cleared_gap_sets": 0,
+        }
+
+    return delete_tracks_by_ids(normalized)
 
 
 def compute_library_stats() -> dict:
@@ -121,24 +215,85 @@ def search_library(
     key: str | None,
     energy_range: str | None,
     query: str | None,
+    needs_review: bool = False,
 ) -> list[Track]:
     bpm_min, bpm_max = _parse_range(bpm_range, 5.0)
     energy_min, energy_max = _parse_range(energy_range, 0.1)
 
-    return search_tracks(
+    tracks = search_tracks(
         bpm_min=bpm_min,
         bpm_max=bpm_max,
         key=key.strip().upper() if key else None,
         energy_min=energy_min,
         energy_max=energy_max,
         query=query.strip() if query else None,
+        needs_review=None,
     )
+    decorated = [_decorate_review_state(track) for track in tracks]
+    if needs_review:
+        return [track for track in decorated if track.needs_review]
+    return decorated
+
+
+def _apply_track_override(track: Track) -> Track:
+    override = get_track_override(track.file_path)
+    if not override:
+        if track.has_overrides:
+            return track.model_copy(update={"has_overrides": False})
+        return track
+
+    values: dict = {"has_overrides": True}
+    if override.get("bpm") is not None:
+        values["bpm"] = float(override["bpm"])
+    if override.get("musical_key"):
+        values["musical_key"] = str(override["musical_key"]).strip().upper()
+    if override.get("energy_level") is not None:
+        values["energy_level"] = float(override["energy_level"])
+    return track.model_copy(update=values)
+
+
+def _decorate_review_state(track: Track) -> Track:
+    if track.analysis_version >= ANALYSIS_VERSION:
+        return track
+
+    legacy_note = "Legacy analysis version; rescan to upgrade"
+    notes = track.review_notes.strip()
+    if notes:
+        if legacy_note in notes:
+            combined = notes
+        else:
+            combined = f"{notes} | {legacy_note}"
+    else:
+        combined = legacy_note
+
+    return track.model_copy(update={"needs_review": True, "review_notes": combined})
+
+
+def duplicate_hash_counts() -> dict[str, int]:
+    """Return hash counts for duplicate detection across the full library."""
+    counts: dict[str, int] = {}
+    for track in get_all_tracks():
+        counts[track.file_hash] = counts.get(track.file_hash, 0) + 1
+    return counts
 
 
 def create_set_plan(description: str, name: str, duration: int) -> SetPlan:
-    result = plan_set(description, name, duration)
+    settings = get_settings()
+    if not settings.openai_api_key.strip():
+        raise RuntimeError("OpenAI API key is missing. Open Preferences and set OPENAI_API_KEY.")
+
+    if not get_all_tracks():
+        raise RuntimeError("No tracks in library. Scan a music folder first.")
+
+    try:
+        result = plan_set(description, name, duration)
+    except Exception as exc:
+        raise RuntimeError(f"Planning call failed: {exc}") from exc
+
     if not result:
-        raise RuntimeError("Failed to create set plan. Check API credentials and library contents.")
+        raise RuntimeError(
+            "Planner returned no set. Check OPENAI_MODEL/API quota and try a shorter prompt."
+        )
     return result
 
 
