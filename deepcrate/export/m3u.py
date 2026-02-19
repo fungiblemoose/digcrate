@@ -29,6 +29,9 @@ def export_m3u(set_name: str, output_path: str | None = None) -> str | None:
         safe_name = set_name.replace(" ", "_").replace("/", "-")
         output_path = f"{safe_name}.m3u"
 
+    output_file = Path(output_path).expanduser()
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
     lines = ["#EXTM3U", f"#PLAYLIST:{set_name}"]
     for track in tracks:
         duration = int(track.duration)
@@ -36,5 +39,5 @@ def export_m3u(set_name: str, output_path: str | None = None) -> str | None:
         lines.append(f"#EXTINF:{duration},{display}")
         lines.append(track.file_path)
 
-    Path(output_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return output_path
+    output_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return str(output_file)

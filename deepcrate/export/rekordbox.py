@@ -38,6 +38,8 @@ def export_rekordbox(set_name: str, output_path: str | None = None) -> str | Non
     if not output_path:
         safe_name = set_name.replace(" ", "_").replace("/", "-")
         output_path = f"{safe_name}.xml"
+    output_file = Path(output_path).expanduser()
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Build Rekordbox XML
     root = ET.Element("DJ_PLAYLISTS", Version="1.0.0")
@@ -74,5 +76,5 @@ def export_rekordbox(set_name: str, output_path: str | None = None) -> str | Non
 
     tree = ET.ElementTree(root)
     ET.indent(tree, space="  ")
-    tree.write(output_path, encoding="utf-8", xml_declaration=True)
-    return output_path
+    tree.write(str(output_file), encoding="utf-8", xml_declaration=True)
+    return str(output_file)

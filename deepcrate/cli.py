@@ -58,7 +58,7 @@ def scan(
             # Skip if already analyzed with same hash
             existing = get_track_by_path(str(audio_file))
             current_hash = file_hash(audio_file)
-            if existing and existing.file_hash == current_hash:
+            if existing and existing.file_hash == current_hash and (existing.title or "").strip():
                 skipped += 1
                 progress.advance(task)
                 continue

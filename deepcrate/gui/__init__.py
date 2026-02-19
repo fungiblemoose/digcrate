@@ -1,0 +1,2 @@
+"""Desktop GUI for DeepCrate."""
+

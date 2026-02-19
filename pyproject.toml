@@ -18,10 +18,12 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "aiosqlite>=0.19.0",
     "numpy>=1.26.0",
+    "PySide6>=6.8.0",
 ]
 
 [project.scripts]
 deepcrate = "deepcrate.cli:app"
+deepcrate-gui = "deepcrate.gui.app:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

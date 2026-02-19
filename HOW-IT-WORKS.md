@@ -6,6 +6,26 @@ DeepCrate is a command-line tool that helps you plan DJ sets from your local mus
 
 You have a folder full of music. DeepCrate listens to each track, figures out its BPM, musical key, and energy level, and stores all of that in a local database. Then when you want to build a set, you describe what you want in plain English — "60 minute liquid DnB set, start chill, peak around 40 minutes" — and it uses ChatGPT to pick tracks from your library and put them in an order that flows well. It checks every transition for harmonic compatibility using the Camelot wheel, flags any rough spots, and can even search Spotify for tracks you're missing. When you're happy with the set, export it as an M3U or Rekordbox XML and load it straight into your DJ software.
 
+## Desktop GUI
+
+If you prefer clicking over CLI commands, run the local desktop app:
+
+```bash
+deepcrate-gui
+```
+
+The GUI wraps the same core functions as the CLI with tabs for:
+- Library scan, stats, and search
+- Set planning and preview
+- Gap analysis
+- Spotify discovery for gaps
+- Playlist export
+
+Use `DeepCrate -> Preferences...` (or `Edit -> Preferences...`) to set:
+- `OPENAI_API_KEY` / model
+- Spotify client ID/secret
+- Database path
+
 ## Step by Step
 
 ### 1. Scanning Your Music
