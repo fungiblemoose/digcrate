@@ -19,6 +19,58 @@ enum LocalDatabaseError: LocalizedError {
 }
 
 private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+private let localDatabaseBootstrapSchema = """
+CREATE TABLE IF NOT EXISTS tracks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path TEXT UNIQUE NOT NULL,
+    file_hash TEXT NOT NULL,
+    title TEXT DEFAULT '',
+    artist TEXT DEFAULT '',
+    bpm REAL DEFAULT 0.0,
+    musical_key TEXT DEFAULT '',
+    energy_level REAL DEFAULT 0.0,
+    energy_confidence REAL DEFAULT 1.0,
+    duration REAL DEFAULT 0.0,
+    preview_start REAL DEFAULT 0.0,
+    needs_review INTEGER DEFAULT 0,
+    review_notes TEXT DEFAULT '',
+    has_overrides INTEGER DEFAULT 0,
+    analysis_version INTEGER DEFAULT 3
+);
+
+CREATE TABLE IF NOT EXISTS sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT '',
+    target_duration INTEGER DEFAULT 60
+);
+
+CREATE TABLE IF NOT EXISTS set_tracks (
+    set_id INTEGER NOT NULL,
+    track_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    transition_score REAL DEFAULT 0.0,
+    PRIMARY KEY (set_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS gaps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    set_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    suggested_bpm REAL DEFAULT 0.0,
+    suggested_key TEXT DEFAULT '',
+    suggested_energy REAL DEFAULT 0.0,
+    suggested_vibe TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS track_overrides (
+    file_path TEXT PRIMARY KEY NOT NULL,
+    bpm REAL,
+    musical_key TEXT,
+    energy_level REAL,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+"""
 
 final class LocalDatabase: @unchecked Sendable {
     static let shared = LocalDatabase()
@@ -313,7 +365,17 @@ final class LocalDatabase: @unchecked Sendable {
 
     private func withConnection<T>(_ block: (OpaquePointer) throws -> T) throws -> T {
         var db: OpaquePointer?
-        let path = resolvedDatabaseURL().path
+        let dbURL = resolvedDatabaseURL()
+        do {
+            try FileManager.default.createDirectory(
+                at: dbURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            throw LocalDatabaseError.openFailed(error.localizedDescription)
+        }
+        let path = dbURL.path
         if sqlite3_open(path, &db) != SQLITE_OK {
             let message = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "Unknown sqlite error"
             if let db { sqlite3_close(db) }
@@ -323,17 +385,19 @@ final class LocalDatabase: @unchecked Sendable {
             throw LocalDatabaseError.openFailed("No database handle.")
         }
         defer { sqlite3_close(db) }
+        try ensureSchema(db)
         return try block(db)
     }
 
     private func resolvedDatabaseURL() -> URL {
-        let configured = UserDefaults.standard.string(forKey: "settings.databasePath") ?? "data/deepcrate.sqlite"
-        let trimmed = configured.trimmingCharacters(in: .whitespacesAndNewlines)
-        let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).deletingLastPathComponent()
-        if trimmed.hasPrefix("/") {
-            return URL(fileURLWithPath: trimmed)
+        let configured = UserDefaults.standard.string(forKey: "settings.databasePath")
+        return AppRuntime.resolveDatabaseURL(configuredPath: configured)
+    }
+
+    private func ensureSchema(_ db: OpaquePointer) throws {
+        if sqlite3_exec(db, localDatabaseBootstrapSchema, nil, nil, nil) != SQLITE_OK {
+            throw LocalDatabaseError.sqlite(String(cString: sqlite3_errmsg(db)))
         }
-        return root.appendingPathComponent(trimmed.isEmpty ? "data/deepcrate.sqlite" : trimmed)
     }
 
     private func beginTransaction(_ db: OpaquePointer) throws {

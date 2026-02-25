@@ -20,7 +20,7 @@ struct DeepCrateMacApp: App {
                 .environmentObject(appState)
                 .environmentObject(settings)
         }
-        .defaultSize(width: 1320, height: 860)
+        .defaultSize(width: 1180, height: 760)
 
         Settings {
             SettingsView()

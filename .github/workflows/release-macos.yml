@@ -1,0 +1,46 @@
+name: release-macos
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Package macOS app
+        env:
+          DEEPCRATE_CODESIGN_IDENTITY: ${{ secrets.DEEPCRATE_CODESIGN_IDENTITY }}
+          DEEPCRATE_NOTARY_APPLE_ID: ${{ secrets.DEEPCRATE_NOTARY_APPLE_ID }}
+          DEEPCRATE_NOTARY_APP_PASSWORD: ${{ secrets.DEEPCRATE_NOTARY_APP_PASSWORD }}
+          DEEPCRATE_NOTARY_TEAM_ID: ${{ secrets.DEEPCRATE_NOTARY_TEAM_ID }}
+        run: ./scripts/package-macos-app.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepcrate-macos
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+      - name: Publish GitHub Release Assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.zip

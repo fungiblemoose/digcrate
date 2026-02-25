@@ -88,6 +88,14 @@ cd DeepCrateMac
 swift build
 ```
 
+### Package macOS App (`.app` + `.dmg`)
+
+```bash
+./scripts/package-macos-app.sh
+```
+
+The generated `.dmg` can be attached to a GitHub Release and includes an `Applications` shortcut for drag-and-drop install.
+
 ## Planner Behavior
 
 - The planner interprets broad + specific genre language and DJ shorthand.

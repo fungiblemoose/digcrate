@@ -50,7 +50,12 @@ struct PlanView: View {
 
                 LiquidStatusBadge(
                     text: settings.plannerMode == .localApple ? "On-device Apple Model" : "Cloud OpenAI Model",
-                    symbol: settings.plannerMode == .localApple ? "cpu" : "network"
+                    taskLabel: "Planner",
+                    isWorking: isPlanning,
+                    progressCurrent: 0,
+                    progressTotal: 0,
+                    indeterminate: true,
+                    updatedAt: appState.statusUpdatedAt
                 )
             }
 
@@ -337,15 +342,15 @@ struct PlanView: View {
     }
 
     private func envValue(_ key: String) -> String? {
-        let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).deletingLastPathComponent()
-        let envURL = root.appendingPathComponent(".env")
-        guard let content = try? String(contentsOf: envURL, encoding: .utf8) else { return nil }
-        for line in content.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
-            let parts = trimmed.split(separator: "=", maxSplits: 1).map(String.init)
-            if parts.count == 2 && parts[0].trimmingCharacters(in: .whitespacesAndNewlines) == key {
-                return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+        for envURL in AppRuntime.envFileCandidates {
+            guard let content = try? String(contentsOf: envURL, encoding: .utf8) else { continue }
+            for line in content.split(separator: "\n") {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+                let parts = trimmed.split(separator: "=", maxSplits: 1).map(String.init)
+                if parts.count == 2 && parts[0].trimmingCharacters(in: .whitespacesAndNewlines) == key {
+                    return parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                }
             }
         }
         return nil

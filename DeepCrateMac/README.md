@@ -69,6 +69,26 @@ cd ~/Projects/DeepCrate/DeepCrateMac
 swift build
 ```
 
-## Packaging Notes
+## Packaging (GitHub Download + Drag to Applications)
 
-Distribution outside the App Store is possible with standard Developer ID signing + notarization, then shipping a `.dmg` on GitHub Releases.
+From repo root:
+
+```bash
+./scripts/package-macos-app.sh
+```
+
+This builds:
+
+- `dist/DeepCrate-<version>-macOS-<arch>.zip`
+- `dist/DeepCrate-<version>-macOS-<arch>.dmg` (includes an `Applications` shortcut for drag-install)
+
+Optional signing/notarization environment variables:
+
+- `DEEPCRATE_CODESIGN_IDENTITY`
+- `DEEPCRATE_NOTARY_APPLE_ID`
+- `DEEPCRATE_NOTARY_APP_PASSWORD`
+- `DEEPCRATE_NOTARY_TEAM_ID`
+
+GitHub Actions workflow:
+
+- `.github/workflows/release-macos.yml` builds the macOS bundle on tag pushes (`v*`) and uploads the DMG/ZIP to the release.

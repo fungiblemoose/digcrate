@@ -36,7 +36,7 @@ struct LibraryView: View {
     @State private var analysisStatus = AnalysisStatusSnapshot()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             header
             statsStrip
             controls
@@ -61,117 +61,91 @@ struct LibraryView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("Library")
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .font(.system(size: 30, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
 
             Text("Preview quickly, fix weird metadata, and move fast when building party crates.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private var statsStrip: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 116, maximum: 190), spacing: 12, alignment: .leading)],
+            alignment: .leading,
+            spacing: 12
+        ) {
             StatPill(title: "Tracks", value: "\(appState.libraryTracks.count)")
             StatPill(title: "Review", value: "\(reviewQueueCount)")
             StatPill(title: "Avg BPM", value: avgBPM)
             StatPill(title: "Avg Energy", value: avgEnergy)
             StatPill(title: "Selected", value: selectedSummaryText)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                Button {
-                    pickFolder()
-                } label: {
-                    Label("Choose Folder", systemImage: "folder")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    primaryControlButtons
+                    Spacer(minLength: 8)
+                    reviewScopePicker
                 }
 
-                Button {
-                    Task { await scan() }
-                } label: {
-                    Label("Scan", systemImage: "waveform.badge.magnifyingglass")
-                }
-                .disabled(isBusy || appState.scannedFolder.isEmpty)
-
-                Button {
-                    Task { await reanalyzeSelectedTracks() }
-                } label: {
-                    Label(
-                        selectionCount > 1 ? "Reanalyze Selected (\(selectionCount))" : "Reanalyze Selected",
-                        systemImage: "arrow.clockwise"
-                    )
-                }
-                .disabled(isBusy || selectionCount == 0)
-
-                Button(role: .destructive) {
-                    Task { await deleteSelectedTracks() }
-                } label: {
-                    Label(
-                        selectionCount > 1 ? "Delete Selected (\(selectionCount))" : "Delete Selected",
-                        systemImage: "trash"
-                    )
-                }
-                .disabled(isBusy || selectionCount == 0)
-
-                Button {
-                    Task { await reanalyzeAllImportedTracks() }
-                } label: {
-                    Label("Reanalyze All Imported", systemImage: "arrow.trianglehead.2.clockwise")
-                }
-                .disabled(isBusy)
-
-                Picker("Scope", selection: $reviewFilter) {
-                    ForEach(ReviewFilter.allCases) { scope in
-                        Text(scope.rawValue).tag(scope)
+                VStack(alignment: .leading, spacing: 10) {
+                    horizontalScrollRow {
+                        primaryControlButtons
                     }
+                    reviewScopePicker
+                        .frame(maxWidth: 320)
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 280)
-                .onChange(of: reviewFilter) { _, _ in
-                    Task { await loadTracks() }
-                }
-
-                Spacer(minLength: 8)
-
-                Text(appState.scannedFolder.isEmpty ? "No folder selected" : appState.scannedFolder)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
-            HStack(spacing: 10) {
-                TextField("Search artist or title", text: $query)
-                TextField("BPM (e.g. 120-126)", text: $bpmRange)
-                    .frame(maxWidth: 150)
-                TextField("Key (e.g. 8A)", text: $key)
-                    .frame(maxWidth: 110)
-                TextField("Energy (e.g. 0.45-0.70)", text: $energyRange)
-                    .frame(maxWidth: 170)
+            horizontalScrollRow {
+                selectionControlButtons
+            }
 
-                Button {
-                    Task { await loadTracks() }
-                } label: {
-                    Label("Search", systemImage: "magnifyingglass")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    searchFilterFields
                 }
-                .disabled(isBusy)
 
-                Button("Select Visible") {
-                    selectedTrackIDs = Set(appState.libraryTracks.map(\.id))
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField("Search artist or title", text: $query)
+                    HStack(spacing: 10) {
+                        TextField("BPM (e.g. 120-126)", text: $bpmRange)
+                            .frame(maxWidth: 170)
+                        TextField("Key (e.g. 8A)", text: $key)
+                            .frame(maxWidth: 120)
+                        TextField("Energy (e.g. 0.45-0.70)", text: $energyRange)
+                    }
                 }
-                .disabled(appState.libraryTracks.isEmpty || isBusy)
+            }
 
-                Button("Clear Selection") {
-                    selectedTrackIDs.removeAll()
-                    previewPlayer.stopPreview(clearSelection: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    searchActionButtons
+                    Spacer(minLength: 8)
+                    folderStatusLabel
                 }
-                .disabled(selectionCount == 0 || isBusy)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    horizontalScrollRow {
+                        searchActionButtons
+                    }
+                    folderStatusLabel
+                }
             }
             .textFieldStyle(.roundedBorder)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .thinMaterial, contentPadding: 14, shadowOpacity: 0.05)
     }
 
@@ -208,6 +182,15 @@ struct LibraryView: View {
                     ProgressView(value: Double(analysisStatus.current), total: Double(max(analysisStatus.total, 1)))
                         .controlSize(.regular)
                 }
+            }
+
+            if disconnectedTrackCount > 0 {
+                Label(
+                    "\(disconnectedTrackCount) track\(disconnectedTrackCount == 1 ? "" : "s") currently unavailable (drive disconnected or moved).",
+                    systemImage: "externaldrive.badge.exclamationmark"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
             }
         }
         .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .regularMaterial, contentPadding: 14, shadowOpacity: 0.04)
@@ -249,6 +232,13 @@ struct LibraryView: View {
                     }
                     .width(min: 56, ideal: 62, max: 66)
 
+                    TableColumn("Source") { track in
+                        Image(systemName: isTrackFileReachable(track) ? "externaldrive.fill.badge.checkmark" : "externaldrive.badge.exclamationmark")
+                            .foregroundStyle(isTrackFileReachable(track) ? .green.opacity(0.7) : .orange)
+                            .help(isTrackFileReachable(track) ? "File available" : "File missing or drive disconnected")
+                    }
+                    .width(min: 66, ideal: 76, max: 84)
+
                     TableColumn("Artist", value: \.artist)
                     TableColumn("Title", value: \.title)
                     TableColumn("BPM") { track in
@@ -274,13 +264,133 @@ struct LibraryView: View {
                 }
                 .frame(minHeight: 420)
             }
+            .layoutPriority(1)
             .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .ultraThinMaterial, contentPadding: 14, shadowOpacity: 0.05)
 
-            trackInspector
-                .frame(minWidth: 300, idealWidth: 340, maxWidth: 380)
+            ScrollView {
+                trackInspector
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+                .frame(minWidth: 260, idealWidth: 320, maxWidth: 360)
                 .liquidCard(cornerRadius: LiquidMetrics.cardRadius, material: .thinMaterial, contentPadding: 14, shadowOpacity: 0.05)
         }
-        .padding(2)
+        .padding(6)
+    }
+
+    private var reviewScopePicker: some View {
+        Picker("Scope", selection: $reviewFilter) {
+            ForEach(ReviewFilter.allCases) { scope in
+                Text(scope.rawValue).tag(scope)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 280)
+        .onChange(of: reviewFilter) { _, _ in
+            Task { await loadTracks() }
+        }
+    }
+
+    private var primaryControlButtons: some View {
+        Group {
+            Button {
+                pickFolder()
+            } label: {
+                Label("Choose Folder", systemImage: "folder")
+            }
+
+            Button {
+                Task { await scan() }
+            } label: {
+                Label("Scan", systemImage: "waveform.badge.magnifyingglass")
+            }
+            .disabled(isBusy || appState.scannedFolder.isEmpty)
+
+            Button {
+                Task { await reanalyzeAllImportedTracks() }
+            } label: {
+                Label("Reanalyze All Imported", systemImage: "arrow.trianglehead.2.clockwise")
+            }
+            .disabled(isBusy)
+        }
+    }
+
+    private var selectionControlButtons: some View {
+        Group {
+            Button {
+                Task { await reanalyzeSelectedTracks() }
+            } label: {
+                Label(
+                    selectionCount > 1 ? "Reanalyze Selected (\(selectionCount))" : "Reanalyze Selected",
+                    systemImage: "arrow.clockwise"
+                )
+            }
+            .disabled(isBusy || selectionCount == 0)
+
+            Button(role: .destructive) {
+                Task { await deleteSelectedTracks() }
+            } label: {
+                Label(
+                    selectionCount > 1 ? "Delete Selected (\(selectionCount))" : "Delete Selected",
+                    systemImage: "trash"
+                )
+            }
+            .disabled(isBusy || selectionCount == 0)
+
+            Button("Select Visible") {
+                selectedTrackIDs = Set(appState.libraryTracks.map(\.id))
+            }
+            .disabled(appState.libraryTracks.isEmpty || isBusy)
+
+            Button("Clear Selection") {
+                selectedTrackIDs.removeAll()
+                previewPlayer.stopPreview(clearSelection: true)
+            }
+            .disabled(selectionCount == 0 || isBusy)
+        }
+    }
+
+    private var searchFilterFields: some View {
+        Group {
+            TextField("Search artist or title", text: $query)
+            TextField("BPM (e.g. 120-126)", text: $bpmRange)
+                .frame(maxWidth: 160)
+            TextField("Key (e.g. 8A)", text: $key)
+                .frame(maxWidth: 120)
+            TextField("Energy (e.g. 0.45-0.70)", text: $energyRange)
+                .frame(maxWidth: 180)
+        }
+    }
+
+    private var searchActionButtons: some View {
+        Group {
+            Button {
+                Task { await loadTracks() }
+            } label: {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+            .disabled(isBusy)
+        }
+    }
+
+    private var folderStatusLabel: some View {
+        Text(appState.scannedFolder.isEmpty ? "No folder selected" : appState.scannedFolder)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .minimumScaleFactor(0.8)
+            .allowsTightening(true)
+    }
+
+    private func horizontalScrollRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 1)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
     }
 
     private var trackInspector: some View {
@@ -399,6 +509,16 @@ struct LibraryView: View {
                 }
                 .font(.footnote)
 
+                if !isTrackFileReachable(track) {
+                    Label("Track file is currently offline. Reconnect the source drive before preview/reanalysis.", systemImage: "externaldrive.badge.exclamationmark")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else {
+                    Label("Source file is online and ready.", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green.opacity(0.8))
+                }
+
                 Divider()
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -498,6 +618,10 @@ struct LibraryView: View {
         return appState.libraryTracks.first(where: { $0.id == primarySelectedTrackID })
     }
 
+    private var disconnectedTrackCount: Int {
+        appState.libraryTracks.filter { !isTrackFileReachable($0) }.count
+    }
+
     private func syncOverrideDrafts() {
         guard let selectedTrack else {
             overrideBPM = ""
@@ -564,6 +688,19 @@ struct LibraryView: View {
     private func reanalyzeSelectedTracks() async {
         let ids = selectedTrackIDs.sorted()
         guard !ids.isEmpty else { return }
+
+        let missing = ids.filter { id in
+            guard let track = appState.libraryTracks.first(where: { $0.id == id }) else { return false }
+            return !isTrackFileReachable(track)
+        }
+
+        if !missing.isEmpty {
+            let msg = "\(missing.count) selected track\(missing.count == 1 ? " is" : "s are") offline. Reconnect drive and retry."
+            appState.statusMessage = msg
+            completeAnalysisStatus(detail: msg, failed: true)
+            return
+        }
+
         await performBulkReanalysis(trackIDs: ids, action: "Reanalyzing Selected Tracks")
     }
 
@@ -784,11 +921,15 @@ struct LibraryView: View {
         analysisStatus.isRunning = true
         analysisStatus.isIndeterminate = indeterminate
         analysisStatus.isError = false
+        appState.beginTask(action, total: total, indeterminate: indeterminate)
+        appState.statusMessage = detail
     }
 
     private func updateAnalysisStatusProgress(current: Int, detail: String) {
         analysisStatus.current = current
         analysisStatus.detail = detail
+        appState.updateTaskProgress(current: current)
+        appState.statusMessage = detail
     }
 
     private func completeAnalysisStatus(detail: String, failed: Bool) {
@@ -799,9 +940,17 @@ struct LibraryView: View {
         analysisStatus.isError = failed
         if failed {
             analysisStatus.action = "Analysis Completed with Issues"
+            appState.completeTask(label: "Needs Attention")
         } else {
             analysisStatus.action = "Analysis Complete"
+            appState.completeTask(label: "Ready")
         }
+        appState.statusMessage = detail
+    }
+
+    private func isTrackFileReachable(_ track: Track) -> Bool {
+        guard !track.filePath.isEmpty else { return true }
+        return FileManager.default.fileExists(atPath: track.filePath)
     }
 
     private func parseOverride(_ value: String) -> Double? {
@@ -846,14 +995,20 @@ private struct StatPill: View {
             Text(title.uppercased())
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .allowsTightening(true)
             Text(value)
                 .font(.headline)
-                .lineLimit(1)
+                .lineLimit(2)
                 .truncationMode(.tail)
+                .minimumScaleFactor(0.7)
+                .allowsTightening(true)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .frame(minWidth: 90, alignment: .leading)
+        .frame(minWidth: 88, maxWidth: .infinity, alignment: .leading)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: LiquidMetrics.compactRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: LiquidMetrics.compactRadius, style: .continuous)

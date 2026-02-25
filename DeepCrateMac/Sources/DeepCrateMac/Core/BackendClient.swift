@@ -18,17 +18,8 @@ enum BackendError: LocalizedError {
 }
 
 struct BackendClient {
-    private var repoRoot: URL {
-        URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .deletingLastPathComponent()
-    }
-
-    private var pythonURL: URL {
-        repoRoot.appendingPathComponent(".venv/bin/python")
-    }
-
-    private var bridgeScriptURL: URL {
-        repoRoot.appendingPathComponent("deepcrate/mac_bridge.py")
+    private var pythonURL: URL? {
+        AppRuntime.pythonExecutableURL
     }
 
     func scan(directory: String) throws -> String {
@@ -221,14 +212,19 @@ struct BackendClient {
     }
 
     private func runJSON<T: Decodable>(_ args: [String]) throws -> T {
-        guard FileManager.default.fileExists(atPath: pythonURL.path) else {
-            throw BackendError.pythonMissing(pythonURL.path)
+        guard let pythonURL else {
+            throw BackendError.pythonMissing(AppRuntime.expectedPythonLocationDescription)
         }
 
         let process = Process()
         process.executableURL = pythonURL
-        process.currentDirectoryURL = repoRoot
-        process.arguments = [bridgeScriptURL.path] + args
+        process.currentDirectoryURL = AppRuntime.backendWorkingDirectory
+        process.environment = resolvedEnvironment()
+        if AppRuntime.usesEmbeddedBackend {
+            process.arguments = ["-m", "deepcrate.mac_bridge"] + args
+        } else {
+            process.arguments = [AppRuntime.bridgeScriptURL.path] + args
+        }
 
         let outPipe = Pipe()
         let errPipe = Pipe()
@@ -252,6 +248,28 @@ struct BackendClient {
             let raw = String(data: stdoutData, encoding: .utf8) ?? ""
             throw BackendError.processFailed("\(error.localizedDescription)\n\nRaw: \(raw)")
         }
+    }
+
+    private func resolvedEnvironment() -> [String: String] {
+        var env = ProcessInfo.processInfo.environment
+        env["DATABASE_PATH"] = AppRuntime
+            .resolveDatabaseURL(configuredPath: UserDefaults.standard.string(forKey: "settings.databasePath"))
+            .path
+
+        copyUserDefault("settings.openAIKey", to: "OPENAI_API_KEY", into: &env)
+        copyUserDefault("settings.openAIModel", to: "OPENAI_MODEL", into: &env)
+        copyUserDefault("settings.spotifyClientID", to: "SPOTIFY_CLIENT_ID", into: &env)
+        copyUserDefault("settings.spotifyClientSecret", to: "SPOTIFY_CLIENT_SECRET", into: &env)
+        return env
+    }
+
+    private func copyUserDefault(_ key: String, to envKey: String, into env: inout [String: String]) {
+        guard let value = UserDefaults.standard.string(forKey: key)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !value.isEmpty else {
+            return
+        }
+        env[envKey] = value
     }
 }
 

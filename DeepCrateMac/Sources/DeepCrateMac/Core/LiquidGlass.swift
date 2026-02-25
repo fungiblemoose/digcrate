@@ -37,22 +37,93 @@ struct LiquidGroupBoxStyle: GroupBoxStyle {
 
 struct LiquidStatusBadge: View {
     let text: String
-    var symbol: String = "dot.radiowaves.left.and.right"
+    let taskLabel: String
+    let isWorking: Bool
+    let progressCurrent: Int
+    let progressTotal: Int
+    let indeterminate: Bool
+    let updatedAt: Date
+
+    private var statusSymbol: String {
+        if isWorking {
+            return "arrow.triangle.2.circlepath"
+        }
+        return "checkmark.seal.fill"
+    }
+
+    private var statusTone: Color {
+        isWorking ? .blue : .green
+    }
+
+    private var progressLabel: String {
+        if isWorking {
+            if indeterminate || progressTotal <= 0 {
+                return "Working"
+            }
+            return "\(min(progressCurrent, progressTotal))/\(progressTotal)"
+        }
+        return "Ready"
+    }
+
+    private var timestampLabel: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: updatedAt)
+    }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.callout.weight(.semibold))
-            Text(text)
-                .font(.callout.weight(.medium))
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 10) {
+                Image(systemName: statusSymbol)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(statusTone)
+                    .symbolEffect(.pulse.byLayer, isActive: isWorking)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(taskLabel)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+                    Text(text)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .allowsTightening(true)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(progressLabel)
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(timestampLabel)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            if isWorking {
+                if indeterminate || progressTotal <= 0 {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.blue)
+                } else {
+                    ProgressView(value: Double(progressCurrent), total: Double(max(progressTotal, 1)))
+                        .controlSize(.small)
+                        .tint(.blue)
+                }
+            }
         }
-        .foregroundStyle(.primary.opacity(0.82))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(minWidth: 220, idealWidth: 340)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            Capsule()
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
                         colors: [Color.white.opacity(0.5), Color.white.opacity(0.16)],
@@ -62,6 +133,7 @@ struct LiquidStatusBadge: View {
                     lineWidth: 1
                 )
         )
+        .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 6)
     }
 }
 
@@ -85,6 +157,8 @@ struct VisualEffectGlass: NSViewRepresentable {
 }
 
 struct WindowAppearanceConfigurator: NSViewRepresentable {
+    var minContentSize: CGSize = CGSize(width: 880, height: 620)
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         DispatchQueue.main.async {
@@ -105,6 +179,7 @@ struct WindowAppearanceConfigurator: NSViewRepresentable {
         window.backgroundColor = .clear
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = false
+        window.contentMinSize = minContentSize
     }
 }
 

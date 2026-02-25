@@ -44,7 +44,7 @@ final class AppSettings: ObservableObject {
         self.openAIModel = UserDefaults.standard.string(forKey: Keys.openAIModel) ?? "gpt-4o-mini"
         self.spotifyClientID = UserDefaults.standard.string(forKey: Keys.spotifyClientID) ?? ""
         self.spotifyClientSecret = UserDefaults.standard.string(forKey: Keys.spotifyClientSecret) ?? ""
-        self.databasePath = UserDefaults.standard.string(forKey: Keys.databasePath) ?? "data/deepcrate.sqlite"
+        self.databasePath = UserDefaults.standard.string(forKey: Keys.databasePath) ?? AppRuntime.defaultDatabaseSettingValue
 
         let storedMode = UserDefaults.standard.string(forKey: Keys.plannerMode)
         self.plannerMode = PlannerMode(rawValue: storedMode ?? "") ?? .localApple
