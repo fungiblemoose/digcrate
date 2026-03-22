@@ -188,16 +188,6 @@ struct BackendClient {
         }
     }
 
-    func export(name: String, format: String, output: String) throws -> String {
-        var args = ["export", "--name", name, "--format", format]
-        if !output.isEmpty {
-            args += ["--output", output]
-        }
-
-        let result: ExportResponse = try runJSON(args)
-        return result.path
-    }
-
     func saveSet(name: String, description: String, duration: Int, trackIDs: [Int]) throws {
         let encodedIDs = String(data: try JSONEncoder().encode(trackIDs), encoding: .utf8) ?? "[]"
         _ = try runJSON(
@@ -434,10 +424,6 @@ private struct DiscoverDTO: Decodable {
         case energy
         case spotifyURL = "spotify_url"
     }
-}
-
-private struct ExportResponse: Decodable {
-    let path: String
 }
 
 private struct SaveSetResponse: Decodable {

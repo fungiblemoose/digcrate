@@ -14,5 +14,9 @@ let package = Package(
         .executableTarget(
             name: "DeepCrateMac"
         ),
+        .testTarget(
+            name: "DeepCrateMacTests",
+            dependencies: ["DeepCrateMac"]
+        ),
     ]
 )

@@ -71,7 +71,7 @@ struct ExportView: View {
 
         do {
             let path = try await Task.detached {
-                try BackendClient().export(name: name, format: localFormat, output: localOutput)
+                try ExportService().exportSet(name: name, format: localFormat, outputPath: localOutput)
             }.value
             appState.statusMessage = "Exported to \(path)"
         } catch {

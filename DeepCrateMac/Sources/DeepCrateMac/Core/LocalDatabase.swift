@@ -5,6 +5,7 @@ enum LocalDatabaseError: LocalizedError {
     case openFailed(String)
     case sqlite(String)
     case setNotFound(String)
+    case invalidInput(String)
 
     var errorDescription: String? {
         switch self {
@@ -14,11 +15,14 @@ enum LocalDatabaseError: LocalizedError {
             return message
         case .setNotFound(let name):
             return "Set not found: \(name)"
+        case .invalidInput(let message):
+            return message
         }
     }
 }
 
 private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+private let localDatabaseAnalysisVersion = 3
 private let localDatabaseBootstrapSchema = """
 CREATE TABLE IF NOT EXISTS tracks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +143,256 @@ final class LocalDatabase: @unchecked Sendable {
         }
     }
 
+    func searchTracks(
+        query: String,
+        bpmRange: String,
+        key: String,
+        energyRange: String,
+        needsReview: Bool = false
+    ) throws -> [Track] {
+        let (bpmMin, bpmMax) = try parseRange(bpmRange, defaultSpan: 5.0, label: "BPM")
+        let (energyMin, energyMax) = try parseRange(energyRange, defaultSpan: 0.1, label: "Energy")
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedKey = key.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let reviewExpression = "(needs_review = 1 OR analysis_version < \(localDatabaseAnalysisVersion))"
+
+        return try withConnection { db in
+            var conditions: [String] = []
+            var bindings: [(OpaquePointer, Int32) -> Void] = []
+
+            if let bpmMin {
+                conditions.append("bpm >= ?")
+                bindings.append { stmt, index in self.bindDouble(stmt, index: index, value: bpmMin) }
+            }
+            if let bpmMax {
+                conditions.append("bpm <= ?")
+                bindings.append { stmt, index in self.bindDouble(stmt, index: index, value: bpmMax) }
+            }
+            if !normalizedKey.isEmpty {
+                conditions.append("musical_key = ?")
+                bindings.append { stmt, index in self.bindText(stmt, index: index, value: normalizedKey) }
+            }
+            if let energyMin {
+                conditions.append("energy_level >= ?")
+                bindings.append { stmt, index in self.bindDouble(stmt, index: index, value: energyMin) }
+            }
+            if let energyMax {
+                conditions.append("energy_level <= ?")
+                bindings.append { stmt, index in self.bindDouble(stmt, index: index, value: energyMax) }
+            }
+            if !normalizedQuery.isEmpty {
+                conditions.append("(title LIKE ? OR artist LIKE ?)")
+                let likeValue = "%\(normalizedQuery)%"
+                bindings.append { stmt, index in self.bindText(stmt, index: index, value: likeValue) }
+                bindings.append { stmt, index in self.bindText(stmt, index: index, value: likeValue) }
+            }
+            if needsReview {
+                conditions.append(reviewExpression)
+            }
+
+            let whereClause = conditions.isEmpty ? "1=1" : conditions.joined(separator: " AND ")
+            let sql = """
+            SELECT id, artist, title, bpm, musical_key, energy_level, energy_confidence, duration, file_path,
+                   preview_start, needs_review, review_notes, has_overrides, analysis_version
+            FROM tracks
+            WHERE \(whereClause)
+            ORDER BY \(reviewExpression) DESC, energy_confidence ASC, bpm
+            """
+            let stmt = try prepare(db: db, sql: sql)
+            defer { sqlite3_finalize(stmt) }
+
+            for (offset, bind) in bindings.enumerated() {
+                bind(stmt, Int32(offset + 1))
+            }
+
+            var rows: [Track] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                rows.append(trackFromLibraryRow(stmt))
+            }
+            return rows
+        }
+    }
+
+    func saveTrackOverride(
+        trackID: Int,
+        bpm: Double?,
+        key: String?,
+        energy: Double?
+    ) throws -> Track {
+        try withConnection { db in
+            guard let existing = try trackByID(db: db, id: trackID) else {
+                throw LocalDatabaseError.sqlite("Track not found: \(trackID)")
+            }
+
+            let normalizedKey = key?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .uppercased()
+            let storedKey = (normalizedKey?.isEmpty == false) ? normalizedKey : nil
+
+            try exec(
+                db: db,
+                sql: """
+                INSERT INTO track_overrides (file_path, bpm, musical_key, energy_level, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(file_path) DO UPDATE SET
+                    bpm = excluded.bpm,
+                    musical_key = excluded.musical_key,
+                    energy_level = excluded.energy_level,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                bindings: {
+                    self.bindText($0, index: 1, value: existing.filePath)
+                    self.bindNullableDouble($0, index: 2, value: bpm)
+                    self.bindNullableText($0, index: 3, value: storedKey)
+                    self.bindNullableDouble($0, index: 4, value: energy)
+                }
+            )
+
+            try exec(
+                db: db,
+                sql: """
+                UPDATE tracks
+                SET bpm = ?, musical_key = ?, energy_level = ?, has_overrides = 1
+                WHERE id = ?
+                """,
+                bindings: {
+                    self.bindDouble($0, index: 1, value: bpm ?? existing.bpm)
+                    self.bindText($0, index: 2, value: storedKey ?? existing.key)
+                    self.bindDouble($0, index: 3, value: energy ?? existing.energy)
+                    self.bindInt($0, index: 4, value: trackID)
+                }
+            )
+
+            guard let updated = try trackByID(db: db, id: trackID) else {
+                throw LocalDatabaseError.sqlite("Track not found: \(trackID)")
+            }
+            return updated
+        }
+    }
+
+    func clearTrackOverride(trackID: Int) throws -> Track {
+        try withConnection { db in
+            guard try trackByID(db: db, id: trackID) != nil else {
+                throw LocalDatabaseError.sqlite("Track not found: \(trackID)")
+            }
+
+            try exec(
+                db: db,
+                sql: "DELETE FROM track_overrides WHERE file_path = (SELECT file_path FROM tracks WHERE id = ?)",
+                bindings: { self.bindInt($0, index: 1, value: trackID) }
+            )
+            try exec(
+                db: db,
+                sql: "UPDATE tracks SET has_overrides = 0 WHERE id = ?",
+                bindings: { self.bindInt($0, index: 1, value: trackID) }
+            )
+
+            guard let updated = try trackByID(db: db, id: trackID) else {
+                throw LocalDatabaseError.sqlite("Track not found: \(trackID)")
+            }
+            return updated
+        }
+    }
+
+    func deleteTracks(trackIDs: [Int]) throws -> DeleteTracksSummary {
+        let unique = Array(Set(trackIDs.filter { $0 > 0 })).sorted()
+        guard !unique.isEmpty else {
+            return DeleteTracksSummary(requested: 0, deleted: 0, missing: 0, removedFromSets: 0, clearedGapSets: 0)
+        }
+
+        return try withConnection { db in
+            let trackLookup = try tracksByID(db: db, ids: unique)
+            let existingIDs = unique.filter { trackLookup[$0] != nil }
+            let missing = unique.count - existingIDs.count
+
+            guard !existingIDs.isEmpty else {
+                return DeleteTracksSummary(
+                    requested: unique.count,
+                    deleted: 0,
+                    missing: missing,
+                    removedFromSets: 0,
+                    clearedGapSets: 0
+                )
+            }
+
+            let existingPlaceholders = existingIDs.map { _ in "?" }.joined(separator: ",")
+            let filePaths = existingIDs.compactMap { trackLookup[$0]?.filePath }
+
+            let removedFromSets = try scalarInt(
+                db: db,
+                sql: "SELECT COUNT(*) FROM set_tracks WHERE track_id IN (\(existingPlaceholders))",
+                values: existingIDs.map(BindValue.int)
+            )
+            let affectedSetIDs = try intColumnValues(
+                db: db,
+                sql: "SELECT DISTINCT set_id FROM set_tracks WHERE track_id IN (\(existingPlaceholders))",
+                values: existingIDs.map(BindValue.int)
+            )
+
+            try beginTransaction(db)
+            do {
+                try exec(
+                    db: db,
+                    sql: "DELETE FROM set_tracks WHERE track_id IN (\(existingPlaceholders))",
+                    bindings: { stmt in
+                        for (offset, value) in existingIDs.enumerated() {
+                            self.bindInt(stmt, index: Int32(offset + 1), value: value)
+                        }
+                    }
+                )
+
+                if !affectedSetIDs.isEmpty {
+                    let gapPlaceholders = affectedSetIDs.map { _ in "?" }.joined(separator: ",")
+                    try exec(
+                        db: db,
+                        sql: "DELETE FROM gaps WHERE set_id IN (\(gapPlaceholders))",
+                        bindings: { stmt in
+                            for (offset, value) in affectedSetIDs.enumerated() {
+                                self.bindInt(stmt, index: Int32(offset + 1), value: value)
+                            }
+                        }
+                    )
+                }
+
+                if !filePaths.isEmpty {
+                    let pathPlaceholders = filePaths.map { _ in "?" }.joined(separator: ",")
+                    try exec(
+                        db: db,
+                        sql: "DELETE FROM track_overrides WHERE file_path IN (\(pathPlaceholders))",
+                        bindings: { stmt in
+                            for (offset, value) in filePaths.enumerated() {
+                                self.bindText(stmt, index: Int32(offset + 1), value: value)
+                            }
+                        }
+                    )
+                }
+
+                try exec(
+                    db: db,
+                    sql: "DELETE FROM tracks WHERE id IN (\(existingPlaceholders))",
+                    bindings: { stmt in
+                        for (offset, value) in existingIDs.enumerated() {
+                            self.bindInt(stmt, index: Int32(offset + 1), value: value)
+                        }
+                    }
+                )
+                let deleted = sqlite3_changes(db)
+
+                try commitTransaction(db)
+                return DeleteTracksSummary(
+                    requested: unique.count,
+                    deleted: Int(deleted),
+                    missing: missing,
+                    removedFromSets: removedFromSets,
+                    clearedGapSets: affectedSetIDs.count
+                )
+            } catch {
+                _ = try? rollbackTransaction(db)
+                throw error
+            }
+        }
+    }
+
     func setTrackRows(name: String) throws -> [SetTrackRow] {
         try withConnection { db in
             let sql = """
@@ -220,6 +474,15 @@ final class LocalDatabase: @unchecked Sendable {
                 }
             }
             return rows
+        }
+    }
+
+    func tracksForSet(name: String) throws -> [Track] {
+        try withConnection { db in
+            guard let setID = try setID(db: db, name: name) else {
+                throw LocalDatabaseError.setNotFound(name)
+            }
+            return try tracksForSet(db: db, setID: setID)
         }
     }
 
@@ -463,7 +726,7 @@ final class LocalDatabase: @unchecked Sendable {
         let placeholders = ids.map { _ in "?" }.joined(separator: ",")
         let sql = """
         SELECT id, artist, title, bpm, musical_key, energy_level, energy_confidence, duration,
-               file_path, preview_start, needs_review, review_notes, has_overrides
+               file_path, preview_start, needs_review, review_notes, has_overrides, analysis_version
         FROM tracks
         WHERE id IN (\(placeholders))
         """
@@ -475,24 +738,28 @@ final class LocalDatabase: @unchecked Sendable {
 
         var rows: [Int: Track] = [:]
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let track = Track(
-                id: intColumn(stmt, 0),
-                artist: textColumn(stmt, 1),
-                title: textColumn(stmt, 2),
-                bpm: doubleColumn(stmt, 3),
-                key: textColumn(stmt, 4),
-                energy: doubleColumn(stmt, 5),
-                energyConfidence: doubleColumn(stmt, 6, fallback: 1.0),
-                duration: doubleColumn(stmt, 7),
-                filePath: textColumn(stmt, 8),
-                previewStart: doubleColumn(stmt, 9),
-                needsReview: intColumn(stmt, 10) == 1,
-                reviewNotes: textColumn(stmt, 11),
-                hasOverrides: intColumn(stmt, 12) == 1
-            )
+            let track = trackFromLibraryRow(stmt)
             rows[track.id] = track
         }
         return rows
+    }
+
+    private func trackByID(db: OpaquePointer, id: Int) throws -> Track? {
+        let sql = """
+        SELECT id, artist, title, bpm, musical_key, energy_level, energy_confidence, duration,
+               file_path, preview_start, needs_review, review_notes, has_overrides, analysis_version
+        FROM tracks
+        WHERE id = ?
+        LIMIT 1
+        """
+        let stmt = try prepare(db: db, sql: sql)
+        defer { sqlite3_finalize(stmt) }
+        bindInt(stmt, index: 1, value: id)
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+        return trackFromLibraryRow(stmt)
     }
 
     private func prepare(db: OpaquePointer, sql: String) throws -> OpaquePointer {
@@ -523,12 +790,28 @@ final class LocalDatabase: @unchecked Sendable {
         sqlite3_bind_text(stmt, index, value, -1, sqliteTransient)
     }
 
+    private func bindNullableText(_ stmt: OpaquePointer, index: Int32, value: String?) {
+        guard let value else {
+            sqlite3_bind_null(stmt, index)
+            return
+        }
+        bindText(stmt, index: index, value: value)
+    }
+
     private func bindInt(_ stmt: OpaquePointer, index: Int32, value: Int) {
         sqlite3_bind_int(stmt, index, Int32(value))
     }
 
     private func bindDouble(_ stmt: OpaquePointer, index: Int32, value: Double) {
         sqlite3_bind_double(stmt, index, value)
+    }
+
+    private func bindNullableDouble(_ stmt: OpaquePointer, index: Int32, value: Double?) {
+        guard let value else {
+            sqlite3_bind_null(stmt, index)
+            return
+        }
+        bindDouble(stmt, index: index, value: value)
     }
 
     private func intColumn(_ stmt: OpaquePointer, _ index: Int32) -> Int {
@@ -545,6 +828,49 @@ final class LocalDatabase: @unchecked Sendable {
     private func textColumn(_ stmt: OpaquePointer, _ index: Int32) -> String {
         guard let cString = sqlite3_column_text(stmt, index) else { return "" }
         return String(cString: cString)
+    }
+
+    private enum BindValue {
+        case int(Int)
+        case text(String)
+        case double(Double)
+    }
+
+    private func bindValue(_ stmt: OpaquePointer, index: Int32, value: BindValue) {
+        switch value {
+        case .int(let value):
+            bindInt(stmt, index: index, value: value)
+        case .text(let value):
+            bindText(stmt, index: index, value: value)
+        case .double(let value):
+            bindDouble(stmt, index: index, value: value)
+        }
+    }
+
+    private func scalarInt(db: OpaquePointer, sql: String, values: [BindValue]) throws -> Int {
+        let stmt = try prepare(db: db, sql: sql)
+        defer { sqlite3_finalize(stmt) }
+        for (offset, value) in values.enumerated() {
+            bindValue(stmt, index: Int32(offset + 1), value: value)
+        }
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            return 0
+        }
+        return intColumn(stmt, 0)
+    }
+
+    private func intColumnValues(db: OpaquePointer, sql: String, values: [BindValue]) throws -> [Int] {
+        let stmt = try prepare(db: db, sql: sql)
+        defer { sqlite3_finalize(stmt) }
+        for (offset, value) in values.enumerated() {
+            bindValue(stmt, index: Int32(offset + 1), value: value)
+        }
+
+        var rows: [Int] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            rows.append(intColumn(stmt, 0))
+        }
+        return rows
     }
 
     private func orderedUnique(_ ids: [Int]) -> [Int] {
@@ -572,6 +898,86 @@ final class LocalDatabase: @unchecked Sendable {
     private func nonEmpty(_ value: String, fallback: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private func parseRange(
+        _ value: String,
+        defaultSpan: Double,
+        label: String
+    ) throws -> (Double?, Double?) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return (nil, nil)
+        }
+
+        let parts = trimmed
+            .split(separator: "-", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard !parts.isEmpty else {
+            return (nil, nil)
+        }
+        guard let low = Double(parts[0]) else {
+            throw LocalDatabaseError.invalidInput("Invalid \(label) range: \(value)")
+        }
+        let high: Double
+        if parts.count > 1 {
+            guard let parsedHigh = Double(parts[1]) else {
+                throw LocalDatabaseError.invalidInput("Invalid \(label) range: \(value)")
+            }
+            high = parsedHigh
+        } else {
+            high = low + defaultSpan
+        }
+        return (low, high)
+    }
+
+    private func trackFromLibraryRow(_ stmt: OpaquePointer) -> Track {
+        let filePath = textColumn(stmt, 8)
+        let artist = nonEmpty(textColumn(stmt, 1), fallback: "Unknown Artist")
+        let title = displayTitle(title: textColumn(stmt, 2), filePath: filePath)
+        let analysisVersion = intColumn(stmt, 13)
+        let storedReviewNotes = textColumn(stmt, 11)
+        let reviewState = reviewState(
+            needsReview: intColumn(stmt, 10) == 1,
+            reviewNotes: storedReviewNotes,
+            analysisVersion: analysisVersion
+        )
+
+        return Track(
+            id: intColumn(stmt, 0),
+            artist: artist,
+            title: title,
+            bpm: doubleColumn(stmt, 3),
+            key: textColumn(stmt, 4),
+            energy: doubleColumn(stmt, 5),
+            energyConfidence: doubleColumn(stmt, 6, fallback: 1.0),
+            duration: doubleColumn(stmt, 7),
+            filePath: filePath,
+            previewStart: doubleColumn(stmt, 9),
+            needsReview: reviewState.needsReview,
+            reviewNotes: reviewState.reviewNotes,
+            hasOverrides: intColumn(stmt, 12) == 1
+        )
+    }
+
+    private func reviewState(
+        needsReview: Bool,
+        reviewNotes: String,
+        analysisVersion: Int
+    ) -> (needsReview: Bool, reviewNotes: String) {
+        guard analysisVersion < localDatabaseAnalysisVersion else {
+            return (needsReview, reviewNotes)
+        }
+
+        let legacyNote = "Legacy analysis version; rescan to upgrade"
+        let trimmed = reviewNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return (true, legacyNote)
+        }
+        if trimmed.contains(legacyNote) {
+            return (true, trimmed)
+        }
+        return (true, "\(trimmed) | \(legacyNote)")
     }
 
     private func describeTransition(_ score: Double) -> String {

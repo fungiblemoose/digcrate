@@ -6,8 +6,8 @@ DeepCrate is a Swift-native macOS app for DJs. It scans your library, analyzes B
 
 - Primary product: **Swift app** in `DeepCrateMac/`
 - Hybrid runtime:
-  - Swift-native services for set planning orchestration, set persistence, and gap analysis
-  - Python bridge (`deepcrate/mac_bridge.py`) still used for scan/import, audio analysis, discovery, and export
+  - Swift-native services for set planning orchestration, set persistence, gap analysis, and export
+  - Python bridge (`deepcrate/mac_bridge.py`) still used for scan/import, audio analysis, and discovery
 - Legacy Python GUI: kept for compatibility, no longer the primary UI
 
 ## What Works Today
@@ -105,7 +105,7 @@ The generated `.dmg` can be attached to a GitHub Release and includes an `Applic
 ## Architecture (Current)
 
 - `DeepCrateMac/`: SwiftUI app, planner + gap services, AVFoundation preview player, SQLite access for sets/tracks
-- `deepcrate/mac_bridge.py`: command bridge still used by scan/import, analysis, discovery, and export flows
+- `deepcrate/mac_bridge.py`: command bridge still used by scan/import, analysis, and discovery flows
 - `deepcrate/analysis/`: Python audio analysis (BPM/key/energy)
 - `deepcrate/planning/`: Python planning, scoring, gaps
 - `deepcrate/db.py`: SQLite persistence
@@ -116,7 +116,6 @@ The generated `.dmg` can be attached to a GitHub Release and includes an `Applic
 2. Move bridge commands into Swift services one area at a time:
    - scan/import
    - discovery
-   - export
 3. Replace Python analysis engine with native Swift DSP stack (Accelerate/AVFoundation/Core ML where appropriate), with regression tests against current outputs.
 4. Keep SQLite but migrate data access to Swift-only layer.
 5. Remove Python runtime dependency from app startup/build packaging.

@@ -709,7 +709,13 @@ struct LibraryView: View {
         beginAnalysisStatus(action: "Preparing Reanalyze All", detail: "Loading imported tracks...", indeterminate: true)
         do {
             let allTracks = try await Task.detached {
-                try BackendClient().tracks(query: "", bpm: "", key: "", energy: "")
+                try LocalDatabase.shared.searchTracks(
+                    query: "",
+                    bpmRange: "",
+                    key: "",
+                    energyRange: "",
+                    needsReview: false
+                )
             }.value
             let ids = allTracks.map(\.id)
             if ids.isEmpty {
@@ -741,7 +747,7 @@ struct LibraryView: View {
 
         do {
             let summary = try await Task.detached {
-                try BackendClient().deleteTracks(trackIDs: ids)
+                try LocalDatabase.shared.deleteTracks(trackIDs: ids)
             }.value
 
             let status = deleteSummaryText(summary)
@@ -812,13 +818,17 @@ struct LibraryView: View {
         defer { isBusy = false }
 
         do {
-            let updated = try await Task.detached {
-                try BackendClient().overrideTrack(
+            let updated = try await Task.detached(priority: .userInitiated) {
+                let saved = try LocalDatabase.shared.saveTrackOverride(
                     trackID: trackID,
                     bpm: bpmValue,
                     key: normalizedKey,
                     energy: energyValue
                 )
+                if FileManager.default.fileExists(atPath: saved.filePath) {
+                    return try BackendClient().reanalyze(trackID: trackID)
+                }
+                return saved
             }.value
 
             updateTrackInList(updated)
@@ -836,14 +846,12 @@ struct LibraryView: View {
         defer { isBusy = false }
 
         do {
-            let updated = try await Task.detached {
-                try BackendClient().overrideTrack(
-                    trackID: trackID,
-                    bpm: nil,
-                    key: nil,
-                    energy: nil,
-                    clear: true
-                )
+            let updated = try await Task.detached(priority: .userInitiated) {
+                let cleared = try LocalDatabase.shared.clearTrackOverride(trackID: trackID)
+                if FileManager.default.fileExists(atPath: cleared.filePath) {
+                    return try BackendClient().reanalyze(trackID: trackID)
+                }
+                return cleared
             }.value
 
             updateTrackInList(updated)
@@ -866,11 +874,11 @@ struct LibraryView: View {
 
         do {
             let tracks = try await Task.detached {
-                try BackendClient().tracks(
+                try LocalDatabase.shared.searchTracks(
                     query: localQuery,
-                    bpm: localBPM,
+                    bpmRange: localBPM,
                     key: localKey,
-                    energy: localEnergy,
+                    energyRange: localEnergy,
                     needsReview: localReviewOnly
                 )
             }.value
