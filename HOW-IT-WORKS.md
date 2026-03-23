@@ -35,7 +35,7 @@ The legacy CLI and Python GUI still exist for compatibility, but they are no lon
 
 In the app, open `Library`, click `Scan`, and choose a music folder.
 
-This walks through every audio file in the folder and runs each one through the current Python analysis pipeline. For each track it figures out:
+This walks through every audio file in the folder and runs each one through the current Swift analysis pipeline. For each track it figures out:
 
 - **BPM** — Uses beat tracking to find the tempo
 - **Musical key** — Builds a chromagram (a picture of which notes are present) and matches it against known key profiles (Krumhansl-Kessler profiles) to guess the key. Accuracy is roughly 70-80%. The key gets converted to Camelot notation (like "8A") which is what DJs use for harmonic mixing
@@ -113,7 +113,7 @@ Bridge settings and service credentials can live in a `.env` file in the project
 
 ## Limitations
 
-- Scan/import, reanalysis, and Spotify discovery still depend on the Python bridge today.
+- Spotify discovery still depends on the Python bridge today.
 - Key detection is still imperfect. If a track looks wrong, you can manually override BPM, key, and energy in the Library view.
 - The LLM is only as good as the data you give it. If your metadata (artist/title) is messy, the AI has less to work with.
 - Spotify's audio features API sometimes returns half-tempo BPMs for DnB. We auto-double when it looks wrong, but it's not perfect.

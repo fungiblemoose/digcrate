@@ -673,11 +673,20 @@ struct LibraryView: View {
         beginAnalysisStatus(action: "Scanning Folder", detail: "Indexing and analyzing tracks from \(URL(fileURLWithPath: folder).lastPathComponent)", indeterminate: true)
 
         do {
-            let status = try await Task.detached {
-                try BackendClient().scan(directory: folder)
+            let summary = try await Task.detached(priority: .userInitiated) {
+                try await LibraryAnalysisService.shared.scan(directory: folder) { progress in
+                    await MainActor.run {
+                        updateAnalysisStatusProgress(
+                            current: progress.current,
+                            total: progress.total,
+                            detail: "[\(progress.current)/\(progress.total)] \(progress.name)"
+                        )
+                    }
+                }
             }.value
+            let status = summary.statusText
             appState.statusMessage = status
-            completeAnalysisStatus(detail: status, failed: false)
+            completeAnalysisStatus(detail: status, failed: summary.errors > 0)
             await loadTracks()
         } catch {
             appState.statusMessage = "Scan failed: \(error.localizedDescription)"
@@ -779,8 +788,8 @@ struct LibraryView: View {
             )
 
             do {
-                let refreshed = try await Task.detached {
-                    try BackendClient().reanalyze(trackID: trackID)
+                let refreshed = try await Task.detached(priority: .userInitiated) {
+                    try await LibraryAnalysisService.shared.reanalyze(trackID: trackID)
                 }.value
 
                 updateTrackInList(refreshed)
@@ -826,7 +835,7 @@ struct LibraryView: View {
                     energy: energyValue
                 )
                 if FileManager.default.fileExists(atPath: saved.filePath) {
-                    return try BackendClient().reanalyze(trackID: trackID)
+                    return try await LibraryAnalysisService.shared.reanalyze(trackID: trackID)
                 }
                 return saved
             }.value
@@ -849,7 +858,7 @@ struct LibraryView: View {
             let updated = try await Task.detached(priority: .userInitiated) {
                 let cleared = try LocalDatabase.shared.clearTrackOverride(trackID: trackID)
                 if FileManager.default.fileExists(atPath: cleared.filePath) {
-                    return try BackendClient().reanalyze(trackID: trackID)
+                    return try await LibraryAnalysisService.shared.reanalyze(trackID: trackID)
                 }
                 return cleared
             }.value
@@ -933,7 +942,11 @@ struct LibraryView: View {
         appState.statusMessage = detail
     }
 
-    private func updateAnalysisStatusProgress(current: Int, detail: String) {
+    private func updateAnalysisStatusProgress(current: Int, total: Int? = nil, detail: String) {
+        if let total {
+            analysisStatus.total = total
+            analysisStatus.isIndeterminate = false
+        }
         analysisStatus.current = current
         analysisStatus.detail = detail
         appState.updateTaskProgress(current: current)

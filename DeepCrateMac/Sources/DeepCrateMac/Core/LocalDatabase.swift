@@ -22,7 +22,7 @@ enum LocalDatabaseError: LocalizedError {
 }
 
 private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-private let localDatabaseAnalysisVersion = 3
+private let localDatabaseAnalysisVersion = deepCrateAnalysisVersion
 private let localDatabaseBootstrapSchema = """
 CREATE TABLE IF NOT EXISTS tracks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,6 +210,94 @@ final class LocalDatabase: @unchecked Sendable {
                 rows.append(trackFromLibraryRow(stmt))
             }
             return rows
+        }
+    }
+
+    func storedTrackRecord(trackID: Int) throws -> StoredTrackRecord? {
+        try withConnection { db in
+            try storedTrackRecordByID(db: db, id: trackID)
+        }
+    }
+
+    func storedTrackRecord(filePath: String) throws -> StoredTrackRecord? {
+        try withConnection { db in
+            try storedTrackRecordByFilePath(db: db, filePath: filePath)
+        }
+    }
+
+    func trackOverride(filePath: String) throws -> TrackOverrideRecord? {
+        try withConnection { db in
+            let stmt = try prepare(
+                db: db,
+                sql: """
+                SELECT bpm, musical_key, energy_level
+                FROM track_overrides
+                WHERE file_path = ?
+                LIMIT 1
+                """
+            )
+            defer { sqlite3_finalize(stmt) }
+            bindText(stmt, index: 1, value: filePath)
+
+            guard sqlite3_step(stmt) == SQLITE_ROW else {
+                return nil
+            }
+
+            let key = textColumn(stmt, 1).trimmingCharacters(in: .whitespacesAndNewlines)
+            return TrackOverrideRecord(
+                bpm: nullableDoubleColumn(stmt, 0),
+                key: key.isEmpty ? nil : key,
+                energy: nullableDoubleColumn(stmt, 2)
+            )
+        }
+    }
+
+    func upsertAnalyzedTrack(_ analyzedTrack: AnalyzedTrackRecord) throws -> Track {
+        try withConnection { db in
+            try exec(
+                db: db,
+                sql: """
+                INSERT INTO tracks (
+                    file_path, file_hash, title, artist, bpm, musical_key, energy_level, energy_confidence,
+                    duration, preview_start, needs_review, review_notes, has_overrides, analysis_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(file_path) DO UPDATE SET
+                    file_hash = excluded.file_hash,
+                    title = excluded.title,
+                    artist = excluded.artist,
+                    bpm = excluded.bpm,
+                    musical_key = excluded.musical_key,
+                    energy_level = excluded.energy_level,
+                    energy_confidence = excluded.energy_confidence,
+                    duration = excluded.duration,
+                    preview_start = excluded.preview_start,
+                    needs_review = excluded.needs_review,
+                    review_notes = excluded.review_notes,
+                    has_overrides = excluded.has_overrides,
+                    analysis_version = excluded.analysis_version
+                """,
+                bindings: {
+                    self.bindText($0, index: 1, value: analyzedTrack.filePath)
+                    self.bindText($0, index: 2, value: analyzedTrack.fileHash)
+                    self.bindText($0, index: 3, value: analyzedTrack.title)
+                    self.bindText($0, index: 4, value: analyzedTrack.artist)
+                    self.bindDouble($0, index: 5, value: analyzedTrack.bpm)
+                    self.bindText($0, index: 6, value: analyzedTrack.key)
+                    self.bindDouble($0, index: 7, value: analyzedTrack.energy)
+                    self.bindDouble($0, index: 8, value: analyzedTrack.energyConfidence)
+                    self.bindDouble($0, index: 9, value: analyzedTrack.duration)
+                    self.bindDouble($0, index: 10, value: analyzedTrack.previewStart)
+                    self.bindInt($0, index: 11, value: analyzedTrack.needsReview ? 1 : 0)
+                    self.bindText($0, index: 12, value: analyzedTrack.reviewNotes)
+                    self.bindInt($0, index: 13, value: analyzedTrack.hasOverrides ? 1 : 0)
+                    self.bindInt($0, index: 14, value: analyzedTrack.analysisVersion)
+                }
+            )
+
+            guard let stored = try storedTrackRecordByFilePath(db: db, filePath: analyzedTrack.filePath) else {
+                throw LocalDatabaseError.sqlite("Track not found after upsert: \(analyzedTrack.filePath)")
+            }
+            return stored.asTrack
         }
     }
 
@@ -745,21 +833,7 @@ final class LocalDatabase: @unchecked Sendable {
     }
 
     private func trackByID(db: OpaquePointer, id: Int) throws -> Track? {
-        let sql = """
-        SELECT id, artist, title, bpm, musical_key, energy_level, energy_confidence, duration,
-               file_path, preview_start, needs_review, review_notes, has_overrides, analysis_version
-        FROM tracks
-        WHERE id = ?
-        LIMIT 1
-        """
-        let stmt = try prepare(db: db, sql: sql)
-        defer { sqlite3_finalize(stmt) }
-        bindInt(stmt, index: 1, value: id)
-
-        guard sqlite3_step(stmt) == SQLITE_ROW else {
-            return nil
-        }
-        return trackFromLibraryRow(stmt)
+        try storedTrackRecordByID(db: db, id: id)?.asTrack
     }
 
     private func prepare(db: OpaquePointer, sql: String) throws -> OpaquePointer {
@@ -821,6 +895,13 @@ final class LocalDatabase: @unchecked Sendable {
     private func doubleColumn(_ stmt: OpaquePointer, _ index: Int32, fallback: Double = 0) -> Double {
         if sqlite3_column_type(stmt, index) == SQLITE_NULL {
             return fallback
+        }
+        return sqlite3_column_double(stmt, index)
+    }
+
+    private func nullableDoubleColumn(_ stmt: OpaquePointer, _ index: Int32) -> Double? {
+        if sqlite3_column_type(stmt, index) == SQLITE_NULL {
+            return nil
         }
         return sqlite3_column_double(stmt, index)
     }
@@ -932,31 +1013,97 @@ final class LocalDatabase: @unchecked Sendable {
     }
 
     private func trackFromLibraryRow(_ stmt: OpaquePointer) -> Track {
-        let filePath = textColumn(stmt, 8)
-        let artist = nonEmpty(textColumn(stmt, 1), fallback: "Unknown Artist")
-        let title = displayTitle(title: textColumn(stmt, 2), filePath: filePath)
-        let analysisVersion = intColumn(stmt, 13)
+        storedTrackRecordFromLibraryRow(stmt).asTrack
+    }
+
+    private func storedTrackRecordByID(db: OpaquePointer, id: Int) throws -> StoredTrackRecord? {
+        let sql = """
+        SELECT id, file_path, file_hash, title, artist, bpm, musical_key, energy_level, energy_confidence,
+               duration, preview_start, needs_review, review_notes, has_overrides, analysis_version
+        FROM tracks
+        WHERE id = ?
+        LIMIT 1
+        """
+        let stmt = try prepare(db: db, sql: sql)
+        defer { sqlite3_finalize(stmt) }
+        bindInt(stmt, index: 1, value: id)
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+        return storedTrackRecordFromRow(stmt)
+    }
+
+    private func storedTrackRecordByFilePath(db: OpaquePointer, filePath: String) throws -> StoredTrackRecord? {
+        let sql = """
+        SELECT id, file_path, file_hash, title, artist, bpm, musical_key, energy_level, energy_confidence,
+               duration, preview_start, needs_review, review_notes, has_overrides, analysis_version
+        FROM tracks
+        WHERE file_path = ?
+        LIMIT 1
+        """
+        let stmt = try prepare(db: db, sql: sql)
+        defer { sqlite3_finalize(stmt) }
+        bindText(stmt, index: 1, value: filePath)
+
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            return nil
+        }
+        return storedTrackRecordFromRow(stmt)
+    }
+
+    private func storedTrackRecordFromLibraryRow(_ stmt: OpaquePointer) -> StoredTrackRecord {
         let storedReviewNotes = textColumn(stmt, 11)
         let reviewState = reviewState(
             needsReview: intColumn(stmt, 10) == 1,
             reviewNotes: storedReviewNotes,
-            analysisVersion: analysisVersion
+            analysisVersion: intColumn(stmt, 13)
         )
 
-        return Track(
+        return StoredTrackRecord(
             id: intColumn(stmt, 0),
-            artist: artist,
-            title: title,
+            filePath: textColumn(stmt, 8),
+            fileHash: "",
+            title: displayTitle(title: textColumn(stmt, 2), filePath: textColumn(stmt, 8)),
+            artist: nonEmpty(textColumn(stmt, 1), fallback: "Unknown Artist"),
             bpm: doubleColumn(stmt, 3),
             key: textColumn(stmt, 4),
             energy: doubleColumn(stmt, 5),
             energyConfidence: doubleColumn(stmt, 6, fallback: 1.0),
             duration: doubleColumn(stmt, 7),
-            filePath: filePath,
             previewStart: doubleColumn(stmt, 9),
             needsReview: reviewState.needsReview,
             reviewNotes: reviewState.reviewNotes,
-            hasOverrides: intColumn(stmt, 12) == 1
+            hasOverrides: intColumn(stmt, 12) == 1,
+            analysisVersion: intColumn(stmt, 13)
+        )
+    }
+
+    private func storedTrackRecordFromRow(_ stmt: OpaquePointer) -> StoredTrackRecord {
+        let filePath = textColumn(stmt, 1)
+        let storedReviewNotes = textColumn(stmt, 12)
+        let reviewState = reviewState(
+            needsReview: intColumn(stmt, 11) == 1,
+            reviewNotes: storedReviewNotes,
+            analysisVersion: intColumn(stmt, 14)
+        )
+
+        return StoredTrackRecord(
+            id: intColumn(stmt, 0),
+            filePath: filePath,
+            fileHash: textColumn(stmt, 2),
+            title: displayTitle(title: textColumn(stmt, 3), filePath: filePath),
+            artist: nonEmpty(textColumn(stmt, 4), fallback: "Unknown Artist"),
+            bpm: doubleColumn(stmt, 5),
+            key: textColumn(stmt, 6),
+            energy: doubleColumn(stmt, 7),
+            energyConfidence: doubleColumn(stmt, 8, fallback: 1.0),
+            duration: doubleColumn(stmt, 9),
+            previewStart: doubleColumn(stmt, 10),
+            needsReview: reviewState.needsReview,
+            reviewNotes: reviewState.reviewNotes,
+            hasOverrides: intColumn(stmt, 13) == 1,
+            analysisVersion: intColumn(stmt, 14)
         )
     }
 

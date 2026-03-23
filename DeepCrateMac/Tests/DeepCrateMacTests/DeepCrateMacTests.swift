@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import SQLite3
 import XCTest
 @testable import DeepCrateMac
@@ -169,6 +170,60 @@ final class DeepCrateMacTests: XCTestCase {
         }
     }
 
+    func testNativeLibraryScanSkipsUnchangedFiles() async throws {
+        try await withTemporaryDatabaseAsync { dbURL in
+            try bootstrapDatabase()
+
+            let libraryDirectory = dbURL.deletingLastPathComponent().appendingPathComponent("Library", isDirectory: true)
+            try FileManager.default.createDirectory(at: libraryDirectory, withIntermediateDirectories: true)
+            let trackURL = libraryDirectory.appendingPathComponent("DJ Alpha - Sunset Roller.wav")
+            try createPulseAudioFile(at: trackURL, bpm: 120.0, duration: 20.0)
+
+            let first = try await LibraryAnalysisService.shared.scan(directory: libraryDirectory.path)
+            let second = try await LibraryAnalysisService.shared.scan(directory: libraryDirectory.path)
+            let tracks = try LocalDatabase.shared.loadTracks()
+
+            XCTAssertEqual(first.total, 1)
+            XCTAssertEqual(first.analyzed, 1)
+            XCTAssertEqual(first.skipped, 0)
+            XCTAssertEqual(first.errors, 0)
+
+            XCTAssertEqual(second.total, 1)
+            XCTAssertEqual(second.analyzed, 0)
+            XCTAssertEqual(second.skipped, 1)
+            XCTAssertEqual(second.errors, 0)
+
+            XCTAssertEqual(tracks.count, 1)
+            XCTAssertEqual(tracks[0].artist, "DJ Alpha")
+            XCTAssertEqual(tracks[0].title, "Sunset Roller")
+            XCTAssertGreaterThan(tracks[0].bpm, 0)
+            XCTAssertEqual(tracks[0].filePath, trackURL.path)
+        }
+    }
+
+    func testNativeReanalyzeAppliesStoredOverrides() async throws {
+        try await withTemporaryDatabaseAsync { dbURL in
+            try bootstrapDatabase()
+
+            let libraryDirectory = dbURL.deletingLastPathComponent().appendingPathComponent("Library", isDirectory: true)
+            try FileManager.default.createDirectory(at: libraryDirectory, withIntermediateDirectories: true)
+            let trackURL = libraryDirectory.appendingPathComponent("DJ Beta - Override Test.wav")
+            try createPulseAudioFile(at: trackURL, bpm: 126.0, duration: 24.0)
+
+            _ = try await LibraryAnalysisService.shared.scan(directory: libraryDirectory.path)
+            let tracks = try LocalDatabase.shared.loadTracks()
+            XCTAssertEqual(tracks.count, 1)
+
+            _ = try LocalDatabase.shared.saveTrackOverride(trackID: tracks[0].id, bpm: 140.0, key: "9A", energy: 0.77)
+            let refreshed = try await LibraryAnalysisService.shared.reanalyze(trackID: tracks[0].id)
+
+            XCTAssertEqual(refreshed.bpm, 140.0, accuracy: 0.001)
+            XCTAssertEqual(refreshed.key, "9A")
+            XCTAssertEqual(refreshed.energy, 0.77, accuracy: 0.001)
+            XCTAssertTrue(refreshed.hasOverrides)
+        }
+    }
+
     private func withTemporaryDatabase(_ body: (URL) throws -> Void) throws {
         let fileManager = FileManager.default
         let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -188,6 +243,27 @@ final class DeepCrateMacTests: XCTestCase {
         }
 
         try body(dbURL)
+    }
+
+    private func withTemporaryDatabaseAsync(_ body: (URL) async throws -> Void) async throws {
+        let fileManager = FileManager.default
+        let tempDirectory = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(at: tempDirectory, withIntermediateDirectories: true)
+
+        let dbURL = tempDirectory.appendingPathComponent("deepcrate.sqlite")
+        let previous = UserDefaults.standard.string(forKey: "settings.databasePath")
+        UserDefaults.standard.set(dbURL.path, forKey: "settings.databasePath")
+
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: "settings.databasePath")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "settings.databasePath")
+            }
+            try? fileManager.removeItem(at: tempDirectory)
+        }
+
+        try await body(dbURL)
     }
 
     private func bootstrapDatabase() throws {
@@ -313,5 +389,50 @@ final class DeepCrateMacTests: XCTestCase {
             code: Int(sqlite3_errcode(db)),
             userInfo: [NSLocalizedDescriptionKey: String(cString: sqlite3_errmsg(db))]
         )
+    }
+
+    private func createPulseAudioFile(at url: URL, bpm: Double, duration: Double) throws {
+        let sampleRate = 22_050.0
+        let frameCount = max(Int(duration * sampleRate), 1)
+        let beatInterval = max(Int((60.0 / bpm) * sampleRate), 1)
+        var samples = [Float](repeating: 0, count: frameCount)
+
+        for beatStart in stride(from: 0, to: frameCount, by: beatInterval) {
+            let pulseLength = min(Int(sampleRate * 0.03), frameCount - beatStart)
+            for offset in 0..<pulseLength {
+                let envelope = Float(1.0 - (Double(offset) / Double(max(pulseLength, 1))))
+                samples[beatStart + offset] += envelope * 0.95
+            }
+        }
+
+        for index in 0..<frameCount {
+            let time = Double(index) / sampleRate
+            samples[index] += Float(0.10 * sin(2.0 * .pi * 220.0 * time))
+        }
+
+        let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        let file = try AVAudioFile(
+            forWriting: url,
+            settings: format.settings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+
+        let chunkSize = 4096
+        var offset = 0
+        while offset < frameCount {
+            let count = min(chunkSize, frameCount - offset)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)) else {
+                XCTFail("Failed to allocate audio buffer")
+                return
+            }
+            buffer.frameLength = AVAudioFrameCount(count)
+            let channel = buffer.floatChannelData![0]
+            for index in 0..<count {
+                channel[index] = samples[offset + index]
+            }
+            try file.write(from: buffer)
+            offset += count
+        }
     }
 }

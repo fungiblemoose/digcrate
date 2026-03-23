@@ -6,8 +6,8 @@ DeepCrate is a Swift-native macOS app for DJs. It scans your library, analyzes B
 
 - Primary product: **Swift app** in `DeepCrateMac/`
 - Hybrid runtime:
-  - Swift-native services for set planning orchestration, set persistence, gap analysis, and export
-  - Python bridge (`deepcrate/mac_bridge.py`) still used for scan/import, audio analysis, and discovery
+  - Swift-native services for scan/import, audio analysis, reanalysis, set planning orchestration, set persistence, gap analysis, and export
+  - Python bridge (`deepcrate/mac_bridge.py`) only used for Spotify discovery
 - Legacy Python GUI: kept for compatibility, no longer the primary UI
 
 ## What Works Today
@@ -107,22 +107,19 @@ The generated `.dmg` can be attached to a GitHub Release and includes an `Applic
 
 ## Architecture (Current)
 
-- `DeepCrateMac/`: SwiftUI app, planner + gap services, AVFoundation preview player, SQLite access for tracks/sets/gaps/export
-- `deepcrate/mac_bridge.py`: command bridge still used by scan/import, analysis, and discovery flows
-- `deepcrate/analysis/`: Python audio analysis (BPM/key/energy)
+- `DeepCrateMac/`: SwiftUI app, native scan/reanalysis, planner + gap services, AVFoundation preview player, SQLite access for tracks/sets/gaps/export
+- `deepcrate/mac_bridge.py`: command bridge still used by discovery
+- `deepcrate/analysis/`: legacy Python audio analysis kept for compatibility
 - `deepcrate/planning/`: legacy Python planning/scoring kept for compatibility
 - `deepcrate/db.py`: SQLite persistence
 
 ## Swift-First Roadmap (Pure Swift End State)
 
 1. Keep Swift UI as source of truth (done).
-2. Keep moving remaining bridge commands into Swift services:
-   - scan/import
-   - reanalysis
-   - discovery
-3. Keep SQLite, but finish removing app-facing Python data access.
-4. Replace the Python analysis engine with a native Swift DSP stack (Accelerate/AVFoundation/Core ML where appropriate), with regression tests against current outputs.
-5. Remove the Python runtime dependency from app startup/build packaging.
+2. Keep SQLite and app-facing workflows owned by Swift (done for Library, Sets, Gaps, Export, and planning).
+3. Replace the remaining discovery bridge with a Swift-native client or make discovery an optional legacy feature.
+4. Remove the Python runtime dependency from app startup/build packaging.
+5. Decide whether to retire or freeze the legacy Python GUI/CLI in maintenance mode.
 
 ## Developer Commands
 

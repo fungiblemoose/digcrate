@@ -2,7 +2,7 @@
 
 DeepCrateMac is the primary macOS app for DeepCrate.
 
-It is a hybrid app today: the UI, set-planning logic, persistence, gap analysis, and export are Swift-native, while scan/import analysis and discovery still run through the Python bridge.
+It is a hybrid app today: the UI, scan/import analysis, reanalysis, set-planning logic, persistence, gap analysis, and export are Swift-native, while Spotify discovery still runs through the Python bridge.
 
 ## Current Status
 
@@ -20,6 +20,8 @@ It is a hybrid app today: the UI, set-planning logic, persistence, gap analysis,
 
 Swift-native (`DeepCrateMac/Sources/DeepCrateMac/`):
 - App shell/navigation/UI
+- Library scan/import and audio reanalysis
+- Native audio analysis pipeline (BPM/key/energy/preview cue)
 - Planner orchestration and model routing
 - Local model server planner client
 - Local SQLite service (`LocalDatabase`)
@@ -28,8 +30,6 @@ Swift-native (`DeepCrateMac/Sources/DeepCrateMac/`):
 - Audio preview playback
 
 Python bridge (`deepcrate/mac_bridge.py`):
-- Library scan + audio analysis
-- Reanalysis for tracks whose audio files are available locally
 - Spotify discovery suggestions
 
 ## Requirements
