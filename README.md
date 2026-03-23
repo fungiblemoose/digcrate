@@ -33,7 +33,7 @@ Go to the Library tab → click Scan → point it at your music folder. DeepCrat
 The Library view shows all analyzed tracks with BPM, key, and energy. Flag anything that looks off for reanalysis, or manually override metadata from the track detail panel.
 
 **3. Plan a set**  
-Go to Sets → New Set → describe what you want in plain language:
+Go to Build Set → describe what you want in plain language:
 - *"uplifting techno, 126–128 BPM, 60 minutes"*
 - *"dnb rollers, energetic build, 45 min"*
 - *"afrohouse into tropical, sunset vibe, 90 min"*
@@ -107,21 +107,22 @@ The generated `.dmg` can be attached to a GitHub Release and includes an `Applic
 
 ## Architecture (Current)
 
-- `DeepCrateMac/`: SwiftUI app, planner + gap services, AVFoundation preview player, SQLite access for sets/tracks
+- `DeepCrateMac/`: SwiftUI app, planner + gap services, AVFoundation preview player, SQLite access for tracks/sets/gaps/export
 - `deepcrate/mac_bridge.py`: command bridge still used by scan/import, analysis, and discovery flows
 - `deepcrate/analysis/`: Python audio analysis (BPM/key/energy)
-- `deepcrate/planning/`: Python planning, scoring, gaps
+- `deepcrate/planning/`: legacy Python planning/scoring kept for compatibility
 - `deepcrate/db.py`: SQLite persistence
 
 ## Swift-First Roadmap (Pure Swift End State)
 
 1. Keep Swift UI as source of truth (done).
-2. Move bridge commands into Swift services one area at a time:
+2. Keep moving remaining bridge commands into Swift services:
    - scan/import
+   - reanalysis
    - discovery
-3. Replace Python analysis engine with native Swift DSP stack (Accelerate/AVFoundation/Core ML where appropriate), with regression tests against current outputs.
-4. Keep SQLite but migrate data access to Swift-only layer.
-5. Remove Python runtime dependency from app startup/build packaging.
+3. Keep SQLite, but finish removing app-facing Python data access.
+4. Replace the Python analysis engine with a native Swift DSP stack (Accelerate/AVFoundation/Core ML where appropriate), with regression tests against current outputs.
+5. Remove the Python runtime dependency from app startup/build packaging.
 
 ## Developer Commands
 
