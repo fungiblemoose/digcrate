@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DeepCrate — AI-Powered DJ Set Planning</title>
+  <meta name="description" content="Build playable DJ sets from your own library. Local AI analyzes BPM, key, and energy, then plans sets that mix clean." />
+  <meta property="og:title" content="DeepCrate — AI-Powered DJ Set Planning" />
+  <meta property="og:description" content="Build playable DJ sets from your own library. Local AI analyzes BPM, key, and energy, then plans sets that mix clean." />
+  <meta property="og:url" content="https://deepcrate.backspinlabs.com" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://deepcrate.backspinlabs.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DeepCrate — AI-Powered DJ Set Planning" />
+  <meta name="twitter:description" content="Build playable DJ sets from your own library. Local AI analyzes BPM, key, and energy, then plans sets that mix clean." />
+  <meta name="twitter:image" content="https://deepcrate.backspinlabs.com/og-image.png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #0a0a0c;
+      color: #e8e8ed;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    ::selection { background: rgba(255, 106, 0, 0.25); }
+    a { color: inherit; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    @media (min-width: 640px) { .wrap { padding: 0 40px; } }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(10, 10, 12, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between; height: 58px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: #f5f5f7; font-weight: 600; font-size: 0.9375rem;
+      letter-spacing: -0.01em;
+    }
+    .nav-brand img { height: 26px; width: auto; border-radius: 4px; }
+    .nav-links { display: flex; align-items: center; gap: 1.25rem; }
+    .nav-links a {
+      font-size: 0.8125rem; color: rgba(245,245,247,0.45); text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: rgba(245,245,247,0.9); }
+    .nav-cta {
+      display: inline-flex; align-items: center; padding: 0.38rem 0.9rem;
+      background: #ff6a00; color: #fff; font-weight: 600; font-size: 0.8125rem;
+      border-radius: 9999px; text-decoration: none; transition: opacity 0.18s;
+    }
+    .nav-cta:hover { opacity: 0.84; }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ""; position: absolute; top: -40%; left: -20%;
+      width: 70%; height: 80%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,106,0,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: ""; position: absolute; bottom: -30%; right: -15%;
+      width: 60%; height: 70%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(26,74,68,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      position: relative; z-index: 1; width: 100%;
+      padding-top: 140px; padding-bottom: 100px;
+    }
+    .hero-eyebrow {
+      font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3); margin-bottom: 1.2rem;
+    }
+    .hero-eyebrow span { color: #ff6a00; }
+    .hero h1 {
+      font-size: clamp(2.8rem, 8vw, 5.5rem); font-weight: 700;
+      letter-spacing: -0.04em; line-height: 1.02; color: #fff; margin-bottom: 1.4rem;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.15rem); font-weight: 300;
+      line-height: 1.75; color: rgba(255,255,255,0.55); max-width: 520px; margin-bottom: 2.2rem;
+    }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .btn-primary {
+      display: inline-flex; align-items: center; padding: 0.72rem 1.6rem;
+      background: #ff6a00; color: #fff; font-weight: 600; font-size: 0.875rem;
+      border-radius: 9999px; text-decoration: none; transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.84; transform: scale(1.02); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; padding: 0.72rem 1.6rem;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.65); font-weight: 500; font-size: 0.875rem;
+      border-radius: 9999px; text-decoration: none; transition: background 0.18s, color 0.18s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+
+    /* Sections */
+    section { padding: 100px 0; }
+    .section-label {
+      font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: rgba(255,255,255,0.25); margin-bottom: 0.75rem;
+    }
+    .section-label span { color: #ff6a00; }
+    h2 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700;
+      letter-spacing: -0.03em; line-height: 1.1; color: #fff; margin-bottom: 1rem;
+    }
+    .section-sub {
+      font-size: 1rem; color: rgba(255,255,255,0.45); max-width: 540px;
+      line-height: 1.7; margin-bottom: 3rem;
+    }
+
+    /* Feature grid */
+    .feature-grid {
+      display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
+    @media (min-width: 640px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 860px) { .feature-grid { grid-template-columns: 1fr 1fr 1fr; } }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px; padding: 28px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .feature-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.1);
+    }
+    .feature-icon {
+      font-size: 1.5rem; margin-bottom: 14px;
+      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,106,0,0.1); border-radius: 10px;
+    }
+    .feature-card h3 {
+      font-size: 0.95rem; font-weight: 600; color: #f5f5f7; margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 0.8125rem; color: rgba(255,255,255,0.4); line-height: 1.65;
+    }
+
+    /* Workflow */
+    .workflow-steps {
+      display: grid; grid-template-columns: 1fr; gap: 12px;
+    }
+    @media (min-width: 640px) { .workflow-steps { grid-template-columns: 1fr 1fr; } }
+    .step {
+      display: flex; gap: 16px; padding: 22px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+    }
+    .step-num {
+      flex-shrink: 0; width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,106,0,0.12); color: #ff6a00;
+      font-size: 0.8rem; font-weight: 700; border-radius: 8px;
+    }
+    .step h3 { font-size: 0.875rem; font-weight: 600; color: #f5f5f7; margin-bottom: 4px; }
+    .step p { font-size: 0.8rem; color: rgba(255,255,255,0.38); line-height: 1.6; }
+
+    /* Install */
+    .install-section { text-align: center; }
+    .install-box {
+      display: inline-block; margin-top: 2rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 28px 36px;
+      text-align: left;
+    }
+    .install-box code {
+      display: block; font-size: 0.9rem; color: #ff6a00;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      margin-bottom: 6px;
+    }
+    .install-box .alt {
+      font-size: 0.8rem; color: rgba(255,255,255,0.3); margin-top: 12px;
+    }
+    .install-box .alt a { color: rgba(255,255,255,0.5); text-decoration: underline; }
+    .install-box .alt a:hover { color: #fff; }
+
+    /* Footer */
+    footer {
+      padding: 48px 0; border-top: 1px solid rgba(255,255,255,0.06);
+      text-align: center;
+    }
+    footer p {
+      font-size: 0.75rem; color: rgba(255,255,255,0.25); line-height: 1.8;
+    }
+    footer a { color: rgba(255,255,255,0.4); text-decoration: none; }
+    footer a:hover { color: rgba(255,255,255,0.7); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="nav-brand" href="/">
+      <img src="/logo.png" alt="DeepCrate" />
+      DeepCrate
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#workflow">How It Works</a>
+      <a href="#install">Install</a>
+      <a class="nav-cta" href="https://github.com/fungiblemoose/DeepCrate/releases/latest">Download</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="wrap hero-inner">
+    <p class="hero-eyebrow mono"><span>//</span> macOS &middot; Apple Silicon &middot; Local AI</p>
+    <h1>Build sets that mix&nbsp;clean.</h1>
+    <p class="hero-sub">
+      DeepCrate scans your library, analyzes every track, and uses AI to plan sets
+      with harmonic transitions. No cloud uploads. No subscriptions. Just better crates.
+    </p>
+    <div class="btn-row">
+      <a class="btn-primary" href="https://github.com/fungiblemoose/DeepCrate/releases/latest">Download for Mac</a>
+      <a class="btn-ghost" href="#workflow">See how it works</a>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="wrap">
+    <p class="section-label mono"><span>//</span> Features</p>
+    <h2>Everything stays on your machine.</h2>
+    <p class="section-sub">
+      No uploads, no API keys required. DeepCrate runs entirely on your Mac with
+      local models for AI planning.
+    </p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#9835;</div>
+        <h3>Library Analysis</h3>
+        <p>Scans your folders and detects BPM, musical key (Camelot), and energy level for every track. Fix metadata inline.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9881;</div>
+        <h3>AI Set Planning</h3>
+        <p>Describe the vibe in plain English. DeepCrate picks tracks, orders them for flow, and scores every transition.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127911;</div>
+        <h3>Harmonic Mixing</h3>
+        <p>Transitions scored against the Camelot wheel. Green means clean, red means clash. No guessing.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128269;</div>
+        <h3>Gap Discovery</h3>
+        <p>Flags weak transitions and suggests the BPM, key, and energy of a bridge track that would fix it.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127925;</div>
+        <h3>Spotify Search</h3>
+        <p>One-click search for tracks matching gap criteria. Build a shortlist of fills without leaving the app.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128230;</div>
+        <h3>Rekordbox Export</h3>
+        <p>Export sets as Rekordbox XML or M3U playlists. Metadata preserved. Ready for the booth.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Workflow -->
+<section id="workflow" style="border-top: 1px solid rgba(255,255,255,0.04);">
+  <div class="wrap">
+    <p class="section-label mono"><span>//</span> Workflow</p>
+    <h2>Six tabs. One session.</h2>
+    <p class="section-sub">
+      From raw folders to an exportable set in minutes. Each step builds on the last.
+    </p>
+    <div class="workflow-steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Scan</h3>
+          <p>Point at a folder. DeepCrate analyzes every track for BPM, key, and energy.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Plan</h3>
+          <p>Describe your set in plain English. The AI picks tracks, orders them, and scores transitions.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Review</h3>
+          <p>Preview your set. See transition scores. Drag to reorder. Lock tracks you like.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>Fill Gaps</h3>
+          <p>Weak transitions are flagged with suggested BPM/key. Search Spotify for fills.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div>
+          <h3>Discover</h3>
+          <p>Browse candidates, save a shortlist, chase down the tracks that complete your set.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div>
+          <h3>Export</h3>
+          <p>Rekordbox XML or M3U. Metadata intact. Load it up and play.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section id="install" style="border-top: 1px solid rgba(255,255,255,0.04);">
+  <div class="wrap install-section">
+    <p class="section-label mono"><span>//</span> Install</p>
+    <h2>One command.</h2>
+    <p class="section-sub" style="margin-left:auto;margin-right:auto;">
+      macOS Sonoma or later. Apple Silicon required.
+    </p>
+    <div class="install-box">
+      <code>brew tap fungiblemoose/casks</code>
+      <code>brew install --cask deepcrate</code>
+      <p class="alt">Or grab the <a href="https://github.com/fungiblemoose/DeepCrate/releases/latest">.dmg from GitHub Releases</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="wrap">
+    <p>
+      DeepCrate is made by <a href="https://backspinlabs.com">Backspin Labs</a><br />
+      <a href="https://github.com/fungiblemoose/DeepCrate">GitHub</a> &middot;
+      <a href="mailto:hi@backspinlabs.com">Contact</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var nav=document.querySelector("nav");
+  window.addEventListener("scroll",function(){
+    nav.classList.toggle("scrolled",window.scrollY>20);
+  });
+})();
+</script>
+</body>
+</html>

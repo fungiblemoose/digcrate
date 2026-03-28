@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0a0a0c"/>
+  <g transform="translate(16,16)">
+    <!-- Vinyl record -->
+    <circle r="12" fill="#1a1a1f" stroke="#ff6a00" stroke-width="1"/>
+    <circle r="8" fill="none" stroke="#2a2a30" stroke-width="0.5"/>
+    <circle r="6" fill="none" stroke="#2a2a30" stroke-width="0.5"/>
+    <circle r="3" fill="#ff6a00"/>
+    <circle r="1" fill="#0a0a0c"/>
+  </g>
+</svg>

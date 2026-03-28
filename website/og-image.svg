@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="30%" cy="40%">
+      <stop offset="0%" stop-color="#ff6a00" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#0a0a0c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0a0a0c"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <!-- Vinyl record graphic -->
+  <g transform="translate(900,315)">
+    <circle r="180" fill="#111116" stroke="#ff6a00" stroke-width="2" opacity="0.6"/>
+    <circle r="130" fill="none" stroke="#1e1e24" stroke-width="1"/>
+    <circle r="100" fill="none" stroke="#1e1e24" stroke-width="1"/>
+    <circle r="70" fill="none" stroke="#1e1e24" stroke-width="1"/>
+    <circle r="40" fill="#ff6a00" opacity="0.9"/>
+    <circle r="12" fill="#0a0a0c"/>
+  </g>
+  <!-- Text -->
+  <text x="80" y="240" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif" font-size="72" font-weight="700" fill="#ffffff">DeepCrate</text>
+  <text x="80" y="310" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="28" fill="#a0a0a8">AI-Powered DJ Set Planning</text>
+  <text x="80" y="370" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="20" fill="#666670">Build sets that mix clean.</text>
+  <!-- Backspin Labs -->
+  <text x="80" y="540" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="16" fill="#555560">Backspin Labs</text>
+  <!-- Accent line -->
+  <rect x="80" y="260" width="60" height="3" rx="1.5" fill="#ff6a00"/>
+</svg>
