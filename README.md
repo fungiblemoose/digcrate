@@ -1,170 +1,78 @@
 # DeepCrate
 
-DeepCrate is a Swift-native macOS app for DJs. It scans your library, analyzes BPM/key/energy, builds sets from natural language prompts, explains transition quality, highlights weak gaps, and exports playlists.
+DeepCrate is a command-line tool for AI-powered DJ set planning. It analyzes
+your local music library (BPM, musical key, energy), plans sets from natural
+language descriptions, scores every transition using the Camelot harmonic
+mixing system, finds the weak spots, and exports playlists you can actually
+play out.
 
-## Status
+> **Looking for the Mac app?** A native macOS version of DeepCrate with a
+> full GUI is in development — see [deepcrate.backspinlabs.com](https://deepcrate.backspinlabs.com).
 
-- Primary product: **Swift app** in `DeepCrateMac/`
-- App runtime: fully Swift-native for scan/import, audio analysis, reanalysis, set planning orchestration, gap analysis, discovery, persistence, and export
-- Legacy Python GUI: kept for compatibility, no longer the primary UI
-- Legacy Python modules: kept for compatibility, CLI usage, and regression testing
+## What it does
 
-## What Works Today
+- **Analyze** — scans a folder of audio files and extracts BPM (beat
+  tracking), musical key (chromagram + Krumhansl-Kessler profiles, reported
+  in Camelot notation like `8A`), and energy (RMS + spectral centroid).
+  All analysis is local via `librosa`; nothing is uploaded.
+- **Plan** — describe the set you want ("60 minute liquid dnb journey,
+  start mellow, peak around minute 40") and DeepCrate selects and orders
+  tracks from your library using an LLM, then validates everything against
+  your actual files.
+- **Score** — every transition is rated on key compatibility (40%), BPM
+  match (35%), and energy flow (25%), with half-tempo detection so 87 BPM
+  and 174 BPM DnB mix correctly.
+- **Find gaps** — weak transitions get flagged with a suggested bridge-track
+  profile (target BPM, key, energy), and `discover` searches Spotify for
+  candidates that fit.
+- **Export** — M3U for any player, or Rekordbox XML for Pioneer gear.
 
-- Native macOS SwiftUI interface with liquid-glass styling
-- Library scan + analysis queue
-- Track preview playback in Library and Sets pages
-- Per-track and bulk reanalysis
-- Manual metadata overrides and review queue
-- AI set planning in Swift (local model server or Apple Foundation Model)
-- DJ-jargon-aware planning (`dnb`, `ukg`, `rollers`, `hardbass`, `afrohouse`, `tropical house`, etc.)
-- Gap analysis in Swift with severity and plain-language guidance
-- Native Spotify discovery ranked against the selected gap target
-- Export to M3U/Rekordbox XML
-
-## Usage Walkthrough
-
-Here's what a typical session looks like once the app is running:
-
-**1. Scan your library**  
-Go to the Library tab → click Scan → point it at your music folder. DeepCrate analyzes each file for BPM, key (Camelot notation), and energy. Large collections take a few minutes; subsequent scans skip unchanged files.
-
-**2. Review your tracks**  
-The Library view shows all analyzed tracks with BPM, key, and energy. Flag anything that looks off for reanalysis, or manually override metadata from the track detail panel.
-
-**3. Plan a set**  
-Go to Build Set → describe what you want in plain language:
-- *"uplifting techno, 126–128 BPM, 60 minutes"*
-- *"dnb rollers, energetic build, 45 min"*
-- *"afrohouse into tropical, sunset vibe, 90 min"*
-
-The AI reads your library and builds a tracklist with scored transitions. If your library doesn't have enough of a requested style, it warns you and falls back gracefully.
-
-**4. Check transitions**  
-Each transition gets a score (0–1) based on key compatibility, BPM match, and energy flow. Scores under 0.5 are flagged — the gap analysis view tells you exactly what kind of track would fix it and why.
-
-**5. Export**  
-When you're happy with the set, export to M3U (works with most players) or Rekordbox XML (for Pioneer gear). Done.
-
-## Quick Start (Swift App)
-
-### Requirements
-
-- macOS 14+
-- Xcode Command Line Tools
-- Python 3.12 only if you want to run legacy CLI flows or Python tests
-
-### Setup
+## Install
 
 ```bash
 git clone https://github.com/fungiblemoose/DeepCrate.git
 cd DeepCrate
-cp .env.example .env
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+cp .env.example .env   # add your OpenAI key (and Spotify keys for discover)
 ```
 
-Set values in `.env` as needed:
+Requires Python 3.12+.
 
-```env
-LOCAL_MODEL_ENDPOINT=http://127.0.0.1:8080
-LOCAL_MODEL_NAME=Qwen/Qwen3-8B-Instruct
-LOCAL_MODEL_TOKEN=
-SPOTIFY_CLIENT_ID=...
-SPOTIFY_CLIENT_SECRET=...
-DATABASE_PATH=data/deepcrate.sqlite
-```
+## Commands
 
-`LOCAL_MODEL_ENDPOINT` should point at a local chat-completions server. Common setups are local servers launched by `llama.cpp`, LM Studio, Ollama-compatible bridges, or similar local wrappers.
+| Command | What it does |
+|---------|-------------|
+| `deepcrate scan <dir>` | Analyze audio files and store results. Unchanged files are skipped on rescan. |
+| `deepcrate stats` | Library overview: track count, BPM range, top keys, total duration. |
+| `deepcrate search` | Filter by `--bpm`, `--key`, `--energy`, or `-q` text. |
+| `deepcrate plan "<description>" --name <name> --duration <min>` | AI set planning. |
+| `deepcrate show <name>` | Tracklist with per-transition scores. |
+| `deepcrate gaps <name>` | Flag weak transitions and suggest bridge profiles. |
+| `deepcrate discover --name <name> --gap <n>` | Spotify candidates for a gap. |
+| `deepcrate export <name> --format m3u\|rekordbox` | Write a playlist file. |
 
-These values act as first-run defaults. Once you save settings in the app, the in-app values take precedence.
+## Configuration
 
-### Optional: Legacy Python/Test Environment
+Set in `.env` at the project root:
+
+| Variable | Required for | Default |
+|----------|--------------|---------|
+| `OPENAI_API_KEY` | `plan` | — |
+| `OPENAI_MODEL` | optional | `gpt-4o-mini` |
+| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | `discover` | — |
+| `DATABASE_PATH` | optional | `data/deepcrate.sqlite` |
+
+## Tests
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -e .
+python -m pytest tests/ -v
 ```
 
-### Run
+The suite covers Camelot wheel math, transition scoring (including
+half-tempo and energy-direction handling), and analyzer output validation —
+no audio files or API keys needed.
 
-```bash
-cd DeepCrateMac
-swift run
-```
+## License
 
-### Build
-
-```bash
-cd DeepCrateMac
-swift build
-```
-
-### Package macOS App (`.app` + `.dmg`)
-
-```bash
-./scripts/package-macos-app.sh
-```
-
-The generated `.dmg` can be attached to a GitHub Release and includes an `Applications` shortcut for drag-and-drop install.
-The packaged app no longer embeds a Python runtime.
-
-## Planner Behavior
-
-- The planner interprets broad + specific genre language and DJ shorthand.
-- If a requested style is not in your library, it warns and falls back to the best available tracks.
-- It does not hard-fail by default; it prioritizes usable output.
-
-## Architecture (Current)
-
-- `DeepCrateMac/`: SwiftUI app, native scan/reanalysis, planner + gap services, native Spotify discovery, AVFoundation preview player, SQLite access for tracks/sets/gaps/export
-- `deepcrate/analysis/`: legacy Python audio analysis kept for compatibility
-- `deepcrate/planning/`: legacy Python planning/scoring kept for compatibility
-- `deepcrate/db.py`: SQLite persistence
-
-## Swift-First Roadmap (Pure Swift End State)
-
-1. Keep Swift UI as source of truth (done).
-2. Keep SQLite and app-facing workflows owned by Swift (done for Library, Sets, Gaps, Export, and planning).
-3. Remove the Python runtime dependency from app startup/build packaging (done).
-4. Decide whether to retire or freeze the legacy Python GUI/CLI in maintenance mode.
-5. Improve planner evaluation, discovery ranking, and local-model UX polish.
-
-## Developer Commands
-
-### Swift
-
-```bash
-cd DeepCrateMac
-swift build
-swift run
-```
-
-### Python Tests
-
-```bash
-cd DeepCrate
-.venv/bin/pytest -q
-```
-
-## Repo Layout
-
-```text
-DeepCrateMac/                 Swift app (primary UI)
-deepcrate/analysis/           Python audio analysis
-deepcrate/planning/           Python planning + scoring (legacy/bridge compatibility)
-deepcrate/mac_bridge.py       Legacy Swift <-> Python bridge shim
-deepcrate/db.py               SQLite layer
-tests/                        Python tests
-```
-
-## Licensing
-
-- This repository is licensed under the MIT License. See `LICENSE`.
-- Third-party dependency notices are summarized in `THIRD_PARTY_NOTICES.md`.
-- Some optional and legacy flows use copyleft-licensed dependencies. Review
-  third-party terms before redistribution.
-
-## Notes
-
-- Set previews require local file paths to still exist (common external-drive workflows are supported as long as the drive is mounted).
-- Half/double-tempo matching is handled in transition scoring and genre filtering.
-- Keys are stored in Camelot notation (example: `8A`).
+MIT — see [LICENSE](LICENSE).
