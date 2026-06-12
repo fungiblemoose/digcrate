@@ -63,6 +63,10 @@
       border-radius: 9999px; text-decoration: none; transition: opacity 0.18s;
     }
     .nav-cta:hover { opacity: 0.84; }
+    @media (max-width: 639px) {
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links { gap: 0.75rem; }
+    }
 
     /* Hero */
     .hero {
@@ -220,7 +224,6 @@
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#workflow">How It Works</a>
-      <a href="#install">Install</a>
       <a class="nav-cta" href="https://github.com/fungiblemoose/digcrate/releases/latest">Download</a>
     </div>
   </div>
@@ -345,15 +348,15 @@
 <!-- Install -->
 <section id="install" style="border-top: 1px solid rgba(255,255,255,0.04);">
   <div class="wrap install-section">
-    <p class="section-label mono"><span>//</span> Install</p>
-    <h2>One command.</h2>
+    <p class="section-label mono"><span>//</span> Get DigCrate</p>
+    <h2>Built for your Mac.</h2>
     <p class="section-sub" style="margin-left:auto;margin-right:auto;">
-      macOS Sonoma or later. Apple Silicon required.
+      macOS Sonoma or later. Apple Silicon required.<br />
+      Coming soon to the Mac App Store.
     </p>
     <div class="install-box">
-      <code>brew tap fungiblemoose/casks</code>
-      <code>brew install --cask digcrate</code>
-      <p class="alt">Or grab the <a href="https://github.com/fungiblemoose/digcrate/releases/latest">.dmg from GitHub Releases</a></p>
+      <p class="alt" style="font-size:1rem;">Until then, grab the <a href="https://github.com/fungiblemoose/digcrate/releases/latest">.dmg from GitHub Releases</a></p>
+      <p class="alt">Prefer a terminal? The open-source <a href="https://github.com/fungiblemoose/digcrate">DigCrate CLI</a> is on GitHub.</p>
     </div>
   </div>
 </section>
