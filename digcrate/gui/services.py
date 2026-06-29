@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from collections import OrderedDict
 from pathlib import Path
 from typing import Callable
@@ -415,5 +417,30 @@ def save_preferences(updates: dict[str, str]) -> Path:
         lines.append("")
         lines.extend(existing_other_lines)
 
-    env_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    _write_env_securely(env_path, "\n".join(lines).rstrip() + "\n")
     return env_path
+
+
+def _write_env_securely(env_path: Path, content: str) -> None:
+    """Atomically write ``content`` to ``env_path`` with 0o600 permissions.
+
+    The file may contain secrets (e.g. API keys), so it must never be readable
+    by other users. A temp file is created with restrictive perms, then
+    atomically moved into place so partial/world-readable files are never left
+    behind.
+    """
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(env_path.parent), prefix=".env.", suffix=".tmp"
+    )
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+        os.replace(tmp_name, env_path)
+        os.chmod(env_path, 0o600)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
