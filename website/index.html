@@ -223,6 +223,21 @@
       max-width: 600px; margin: 0 auto;
     }
     footer .fine a { color: rgba(255,255,255,0.42); }
+    .footer-signup { margin: 0 auto 2rem; max-width: 420px; }
+    .footer-signup-copy { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-bottom: 0.75rem; }
+    .footer-signup form { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .footer-signup input {
+      flex: 1 1 220px; min-width: 0; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #f5f5f7;
+      font: inherit; font-size: 0.85rem; padding: 0.6rem 0.8rem; outline: none;
+    }
+    .footer-signup input:focus { border-color: rgba(255,255,255,0.35); }
+    .footer-signup button {
+      background: #ff6a00; border: none; border-radius: 8px; color: #fff;
+      font: inherit; font-size: 0.85rem; font-weight: 600; padding: 0.6rem 1.1rem; cursor: pointer;
+    }
+    .footer-signup button:hover { opacity: 0.88; }
+    .footer-signup-msg { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 0.6rem; min-height: 1.2em; }
   </style>
 </head>
 <body>
@@ -415,6 +430,14 @@
 <!-- Footer -->
 <footer>
   <div class="wrap">
+    <div class="footer-signup">
+      <p class="footer-signup-copy">Occasional updates on new Backspin Labs tools — no spam.</p>
+      <form id="dc-signup">
+        <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" />
+        <button type="submit">Sign up</button>
+      </form>
+      <p id="dc-signup-msg" class="footer-signup-msg"></p>
+    </div>
     <div class="footer-links">
       <a href="https://apps.apple.com/us/app/digcrate/id6779803539">Mac App Store</a>
       <a href="https://github.com/fungiblemoose/digcrate">GitHub</a>
@@ -438,5 +461,41 @@
   });
 })();
 </script>
+<script>
+// Shared email-capture endpoint. Placeholder — the Belay waitlist worker PR
+// defines the real URL; update CAPTURE_ENDPOINT once that worker is deployed.
+const CAPTURE_ENDPOINT = "https://TODO-capture-endpoint";
+(function () {
+  var form = document.getElementById("dc-signup");
+  var msg = document.getElementById("dc-signup-msg");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var params = new URLSearchParams(window.location.search);
+    var payload = {
+      email: form.email.value.trim(),
+      list: "digcrate",
+      source: "digcrate.backspinlabs.com"
+    };
+    params.forEach(function (value, key) {
+      if (key.indexOf("utm_") === 0) payload[key] = value;
+    });
+    msg.textContent = "Signing up…";
+    fetch(CAPTURE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      msg.textContent = "Thanks — you're on the list.";
+      form.reset();
+    }).catch(function () {
+      msg.textContent = "Something went wrong — please try again later.";
+    });
+  });
+})();
+</script>
+<!-- Cloudflare Web Analytics beacon. Replace TODO_CF_ANALYTICS_TOKEN with the
+     real site token from the Cloudflare dashboard (Analytics & Logs > Web Analytics). -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "TODO_CF_ANALYTICS_TOKEN"}'></script>
 </body>
 </html>
