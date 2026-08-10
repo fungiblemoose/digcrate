@@ -232,12 +232,20 @@
       font: inherit; font-size: 0.85rem; padding: 0.6rem 0.8rem; outline: none;
     }
     .footer-signup input:focus { border-color: rgba(255,255,255,0.35); }
+    .footer-signup input:focus-visible, .footer-signup button:focus-visible { outline: 2px solid #ff6a00; outline-offset: 2px; }
     .footer-signup button {
       background: #ff6a00; border: none; border-radius: 8px; color: #fff;
       font: inherit; font-size: 0.85rem; font-weight: 600; padding: 0.6rem 1.1rem; cursor: pointer;
     }
     .footer-signup button:hover { opacity: 0.88; }
+    .footer-signup button[disabled] { opacity: 0.6; cursor: default; }
     .footer-signup-msg { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 0.6rem; min-height: 1.2em; }
+    .footer-signup-consent { font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-top: 0.5rem; }
+    .footer-signup-consent a { color: rgba(255,255,255,0.5); }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
   </style>
 </head>
 <body>
@@ -433,10 +441,12 @@
     <div class="footer-signup">
       <p class="footer-signup-copy">Occasional updates on new Backspin Labs tools — no spam.</p>
       <form id="dc-signup">
-        <input type="email" name="email" required placeholder="you@example.com" autocomplete="email" />
+        <label for="dc-signup-email" class="visually-hidden">Email address</label>
+        <input type="email" id="dc-signup-email" name="email" required placeholder="you@example.com" autocomplete="email" inputmode="email" maxlength="254" />
         <button type="submit">Sign up</button>
       </form>
-      <p id="dc-signup-msg" class="footer-signup-msg"></p>
+      <p id="dc-signup-msg" class="footer-signup-msg" role="status" aria-live="polite"></p>
+      <p class="footer-signup-consent">By subscribing you agree to receive occasional product updates. See our <a href="/privacy.html">privacy policy</a>.</p>
     </div>
     <div class="footer-links">
       <a href="https://apps.apple.com/us/app/digcrate/id6779803539">Mac App Store</a>
@@ -468,28 +478,41 @@ const CAPTURE_ENDPOINT = "https://belay.backspinlabs.com/api/waitlist";
 (function () {
   var form = document.getElementById("dc-signup");
   var msg = document.getElementById("dc-signup-msg");
+  var button = form.querySelector("button[type=submit]");
   form.addEventListener("submit", function (e) {
     e.preventDefault();
+    if (button.disabled) return;
     var params = new URLSearchParams(window.location.search);
     var payload = {
       email: form.email.value.trim(),
       list: "digcrate",
-      source: "digcrate.backspinlabs.com"
+      source: "digcrate.backspinlabs.com",
+      referrer: document.referrer
     };
     params.forEach(function (value, key) {
       if (key.indexOf("utm_") === 0) payload[key] = value;
     });
     msg.textContent = "Signing up…";
+    button.disabled = true;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 10000);
     fetch(CAPTURE_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     }).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (!data || data.ok !== true) throw new Error("Unexpected response");
       msg.textContent = "Thanks — you're on the list.";
       form.reset();
     }).catch(function () {
-      msg.textContent = "Something went wrong — please try again later.";
+      msg.textContent = "Sign-up failed — please try again later, or email hi@backspinlabs.com.";
+    }).finally(function () {
+      clearTimeout(timer);
+      button.disabled = false;
     });
   });
 })();
