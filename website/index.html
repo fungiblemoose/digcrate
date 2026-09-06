@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DigCrate — Plan DJ sets that mix in key</title>
-  <meta name="description" content="DigCrate reads your local library — BPM, key, and energy — and helps you build DJ sets that mix in key. Runs entirely on your Mac. Free on the Mac App Store." />
+  <meta name="description" content="DigCrate reads your local library — BPM, key, and energy — and helps you build DJ sets that mix in key. Local library analysis, set planning and Rekordbox export. Free download; Pro is a one-time purchase." />
   <meta property="og:title" content="DigCrate — Plan DJ sets that mix in key" />
-  <meta property="og:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Everything runs on your Mac. Free on the Mac App Store." />
+  <meta property="og:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings. Free on the Mac App Store." />
   <meta property="og:url" content="https://digcrate.backspinlabs.com" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://digcrate.backspinlabs.com/og-image.png" />
@@ -14,7 +14,7 @@
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="DigCrate — Plan DJ sets that mix in key" />
-  <meta name="twitter:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Everything runs on your Mac." />
+  <meta name="twitter:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings." />
   <meta name="twitter:image" content="https://digcrate.backspinlabs.com/og-image.png" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <style>
@@ -246,7 +246,10 @@
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
     }
-  </style>
+
+.hero{min-height:0}.hero-inner{padding-top:125px;padding-bottom:36px}.hero::before,.hero::after{display:none}section{padding-top:56px;padding-bottom:56px}.product-evidence{padding-top:0}.product-evidence img{display:block;width:100%;height:auto;border:1px solid #333;border-radius:8px}figure{margin:0}figcaption{font-size:.85rem;color:#b4b4bc;margin-top:12px;line-height:1.6}.shot-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px}.feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.feature-card{background:transparent;border:0;border-top:1px solid #333;border-radius:0;padding:22px 0}.feature-icon{display:none}.hero-sub,.section-sub{color:#babac3}a:focus-visible{outline:3px solid #ff6a00;outline-offset:4px}#requirements a,.hero-meta a{color:#ff974d}@media(max-width:600px){.shot-grid,.feature-grid{grid-template-columns:1fr}.hero-inner{padding-top:108px}.hero h1{font-size:2.65rem}section{padding-top:36px;padding-bottom:36px}}
+</style>
+<link rel="canonical" href="https://digcrate.backspinlabs.com/" />
 </head>
 <body>
 
@@ -271,8 +274,8 @@
     <h1>Plan DJ sets that mix in key.</h1>
     <p class="hero-sub">
       DigCrate reads your local library — BPM, musical key, and energy — then helps you
-      build sets with clean harmonic transitions and export them straight to your decks.
-      Everything runs on your Mac. No accounts, no API keys, nothing uploaded.
+      build sets with clean harmonic transitions and export playlists for your DJ software.
+      Audio analysis runs on your Mac. Plan with Apple’s on-device intelligence or a model server you configure. No DigCrate account required.
     </p>
     <div class="btn-row">
       <a class="app-store-link" href="https://apps.apple.com/us/app/digcrate/id6779803539" aria-label="Download DigCrate on the Mac App Store">
@@ -280,10 +283,14 @@
       </a>
       <a class="btn-ghost" href="#workflow">See how it works</a>
     </div>
-    <p class="hero-meta">Free to download. macOS 14 Sonoma or later, Apple Silicon.</p>
+    <p class="hero-meta">Free download · Pro $19.99 once (US) · macOS 14+ · Apple Silicon. <a href="#requirements">AI requirements</a>.</p>
   </div>
 </section>
 
+<section class="product-evidence" aria-label="DigCrate screenshots"><div class="wrap">
+<figure class="main-shot"><a href="/images/build-set.jpg"><img src="/images/build-set.jpg" alt="DigCrate’s Build Set screen from the published Mac App Store listing" width="1600" height="1000" fetchpriority="high"></a><figcaption>Build a set from your library. Screenshot from the published Mac app.</figcaption></figure>
+<div class="shot-grid"><figure><a href="/images/library.jpg"><img src="/images/library.jpg" alt="DigCrate library with analyzed tracks" width="1600" height="1000" loading="lazy"></a><figcaption>Check the library’s BPM, key and energy.</figcaption></figure><figure><a href="/images/gaps.jpg"><img src="/images/gaps.jpg" alt="DigCrate gap analysis screen" width="1600" height="1000" loading="lazy"></a><figcaption>Review gaps before exporting the set.</figcaption></figure></div>
+</div></section>
 <!-- Features -->
 <section id="features">
   <div class="wrap">
@@ -292,7 +299,7 @@
     <p class="section-sub">
       Scanning, analysis, and previews are free out of the box. AI planning and the
       tools that turn a tracklist into a finished set are a one-time DigCrate Pro
-      purchase — no subscription.
+      purchase of $19.99 in the US — no subscription. Local App Store pricing may vary.
     </p>
 
     <div class="tier-head">
@@ -326,7 +333,7 @@
     <div class="tier-head">
       <h3>DigCrate Pro</h3>
       <span class="pro-pill">Pro</span>
-      <span class="tier-note">one-time purchase</span>
+      <span class="tier-note">$19.99 once · US App Store</span>
     </div>
     <div class="feature-grid">
       <div class="feature-card">
@@ -352,68 +359,14 @@
       <div class="feature-card">
         <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 9.5l4 4 4-4"/><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg></div>
         <h4>Rekordbox &amp; M3U export</h4>
-        <p>Export a finished set as Rekordbox XML or an M3U playlist with metadata intact, ready to load into the booth.</p>
+        <p>Export a finished set as Rekordbox XML or an M3U playlist with metadata intact, ready to review and import into compatible DJ software.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Workflow -->
-<section id="workflow" style="border-top: 1px solid rgba(255,255,255,0.04);">
-  <div class="wrap">
-    <p class="section-label">How it works</p>
-    <h2>From a folder to a finished set.</h2>
-    <p class="section-sub">
-      DigCrate moves through the same steps you would, just faster — and keeps you in
-      control at every one.
-    </p>
-    <div class="workflow-steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div>
-          <h4>Scan</h4>
-          <p>Point at a folder. DigCrate analyzes each track for BPM, key, and energy on your Mac.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div>
-          <h4>Plan</h4>
-          <p>Describe the set you want. The planner drafts a tracklist ordered for harmonic flow.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div>
-          <h4>Review</h4>
-          <p>Preview tracks, read the transition scores, reorder by hand, and lock the ones you’re keeping.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div>
-          <h4>Fill gaps</h4>
-          <p>Weak transitions surface with a suggested BPM and key for the bridge track that fixes them.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">5</div>
-        <div>
-          <h4>Discover</h4>
-          <p>Jump to store searches built from each gap to track down the records you’re missing.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">6</div>
-        <div>
-          <h4>Export</h4>
-          <p>Send the finished set to Rekordbox XML or M3U and load it straight into your decks.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
+<section id="workflow"><div class="wrap"><p class="section-label">A set you can review</p><h2>Scan. Plan. Listen. Export.</h2><p class="section-sub">Choose a folder of audio, describe your set and listen through the proposed transitions. Reorder tracks or fill a gap before exporting to Rekordbox XML or M3U. Harmonic scores are a planning aid; your ears make the final decision.</p></div></section>
+<section id="requirements"><div class="wrap"><h2>What your Mac needs.</h2><p class="section-sub">DigCrate runs on Apple Silicon with macOS 14 or later. Apple’s on-device language-model planning requires macOS 26 or later with Apple Intelligence enabled and available. A model server you configure is another option; without an available language model, the planner can fall back to rules-based ordering.</p><p class="section-sub" style="margin-top:1rem">Library analysis is local. A configured model server receives your planning prompt and selected track metadata, so use a server you trust. The current 1.x release does not include Apple Cloud planning. <a href="/privacy.html">Read the privacy details</a>.</p></div></section>
 <!-- Get DigCrate -->
 <section id="get" class="get-section">
   <div class="wrap">
@@ -458,7 +411,7 @@
       DigCrate is made by <a href="https://backspinlabs.com">Backspin Labs</a>.
       Rekordbox is a trademark of AlphaTheta Corporation; Beatport, Spotify, and SoundCloud
       are trademarks of their respective owners. DigCrate is not affiliated with or endorsed
-      by any of them. Discovery links open in your browser — the app itself sends nothing anywhere.
+      by any of them. Discovery links open in your browser — audio analysis stays local; model-server connections and browser searches are described in the privacy policy.
     </p>
   </div>
 </footer>
@@ -517,8 +470,6 @@ const CAPTURE_ENDPOINT = "https://belay.backspinlabs.com/api/waitlist";
   });
 })();
 </script>
-<!-- Cloudflare Web Analytics beacon. Replace TODO_CF_ANALYTICS_TOKEN with the
-     real site token from the Cloudflare dashboard (Analytics & Logs > Web Analytics). -->
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "TODO_CF_ANALYTICS_TOKEN"}'></script>
+
 </body>
 </html>

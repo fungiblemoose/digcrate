@@ -13,37 +13,13 @@
 </head>
 <body>
   <h1>DigCrate Privacy Policy</h1>
-  <p class="updated">Last updated: June 12, 2026</p>
+  <p class="updated">Last updated: September 5, 2026</p>
 
-  <p>DigCrate is built so that your music and your data stay on your Mac. This
-  policy is short because there is very little to disclose.</p>
-
-  <h2>What DigCrate collects</h2>
-  <p>Nothing. DigCrate does not collect, transmit, store, or share any personal
-  data, usage analytics, or telemetry. There are no accounts, no tracking, and
-  no third-party SDKs.</p>
-
-  <p>If you choose to use the optional email signup form on our website, we
-  store the email address you provide along with basic attribution about how
-  you found us (the site the form was on, any UTM campaign parameters in the
-  URL, and the referring page), and use it only to send product updates. We
-  never sell or share it. To be removed at any time, email
-  <a href="mailto:hi@backspinlabs.com">hi@backspinlabs.com</a>.</p>
-
-  <h2>Where your data lives</h2>
-  <p>Your music library analysis (BPM, key, energy), sets, and shortlists are
-  stored in a local database on your Mac. Audio files are read in place and
-  never copied or uploaded.</p>
-
-  <h2>AI set planning</h2>
-  <p>Set planning runs on Apple's on-device intelligence or on a local model
-  server you operate yourself. Track metadata is processed on your machine.
-  If a future version offers Apple's Private Cloud Compute for planning, it
-  will be clearly labeled, and Apple's
-  <a href="https://security.apple.com/blog/private-cloud-compute/">Private Cloud
-  Compute</a> privacy guarantees apply: data is not stored or accessible to
-  anyone, including Apple or us.</p>
-
+  <p>DigCrate is made by Backspin Labs, LLC. This policy describes the current 1.x Mac App Store release and this product website.</p>
+  <h2>Your library</h2><p>Audio files are analyzed on your Mac. Library analysis, sets and shortlists are stored in a local database. Audio is read from the folders you choose; the planning routes described below use prompts and track metadata, rather than uploading your audio files.</p>
+  <h2>Set planning</h2><p>Apple’s on-device planning runs locally when Apple Intelligence is available. If you configure a model server, DigCrate sends the planning prompt and selected track metadata to that endpoint. A server on another machine receives that information over the network. Its operator and security settings determine how it is handled, so choose a server you trust.</p><p>When a language model is unavailable, rules-based planning can run locally. The current 1.x release does not include Apple Cloud planning. This policy does not describe unreleased development builds.</p>
+  <h2>Usage and accounts</h2><p>DigCrate does not require a Backspin Labs account. Apple handles distribution, purchases and any diagnostics available under your Apple settings. Backspin Labs does not receive your music library through a hosted DigCrate planning service.</p>
+  <h2>This website and email updates</h2><p>Cloudflare hosts this website and handles ordinary request information. We have not added an analytics script to this site. If you subscribe to updates, we store your email address, signup source, campaign and referrer information, request user-agent and submission timestamp through our shared Backspin Labs signup service. We use these for updates, attribution and abuse prevention. To unsubscribe, email <a href="mailto:hi@backspinlabs.com">hi@backspinlabs.com</a>. If you contact support, we receive the information you choose to send.</p>
   <h2>Discovery links</h2>
   <p>The Discover feature opens search pages on Beatport, Spotify, or
   SoundCloud in your web browser. The app itself sends nothing to these
@@ -57,8 +33,6 @@
   <h2>Contact</h2>
   <p>Questions: <a href="mailto:hi@backspinlabs.com">hi@backspinlabs.com</a></p>
 
-  <!-- Cloudflare Web Analytics beacon. Replace TODO_CF_ANALYTICS_TOKEN with the
-       real site token from the Cloudflare dashboard (Analytics & Logs > Web Analytics). -->
-  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "TODO_CF_ANALYTICS_TOKEN"}'></script>
+
 </body>
 </html>
