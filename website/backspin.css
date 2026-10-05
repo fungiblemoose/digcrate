@@ -90,6 +90,16 @@ code, kbd { font-family: var(--font-mono); font-size: .9em; }
   .side, .sheet { position: sticky; top: 32px; align-self: start; }
 }
 
+/* On a phone the headline and lede come first, then the facts sheet, then the rest. The sheet
+   stays first in the markup so it sits in the left column on a wide screen. */
+@media (max-width: 899px) {
+  .frame:has(> .sheet) { gap: 0; }
+  .frame:has(> .sheet) > main { display: contents; }
+  .frame:has(> .sheet) > main > * { order: 3; }
+  .frame:has(> .sheet) > main > h1, .frame:has(> .sheet) > main > h1 + p, .frame:has(> .sheet) > main > .lede, .frame:has(> .sheet) > main > .lede + p { order: 1; }
+  .frame > .sheet { order: 2; margin: 14px 0 6px; }
+}
+
 /* Studio column */
 .name { display: block; margin: 0 0 16px; max-width: none; color: var(--ink); font: 800 62px/.9 var(--font-display); text-decoration: none; }
 .name svg { display: block; width: 58px; height: auto; margin-bottom: 12px; }
