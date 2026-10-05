@@ -3,6 +3,13 @@
    Black and white, one hot orange, and a solid color band down the left of the thing a page
    is about. Rules of use: docs/SITE_DESIGN_RULES.md */
 
+/* Stand-ins for Big Shoulders Display while it downloads, scaled to the same width so the
+   headline does not rewrap when the real face arrives. Without these a phone falls back to a
+   face 25% wider. Each one applies only where that local font exists. */
+@font-face { font-family: "BSD Fallback 1"; src: local("HelveticaNeue-CondensedBlack"); size-adjust: 87.3%; }
+@font-face { font-family: "BSD Fallback 2"; src: local("Impact"); size-adjust: 90%; }
+@font-face { font-family: "BSD Fallback 3"; src: local("Arial Bold"), local("Arial"); font-weight: 800; size-adjust: 74.8%; }
+
 :root {
   --page: #ffffff;
   --ink: #111111;
@@ -14,7 +21,7 @@
   --on-orange: #111111;
   --c: var(--orange);          /* a product sets --c and --on to its own color */
   --on: var(--on-orange);
-  --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --font-display: "Big Shoulders Display", "BSD Fallback 1", "BSD Fallback 2", "BSD Fallback 3", sans-serif;
   --font-text: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --gutter: 20px;
