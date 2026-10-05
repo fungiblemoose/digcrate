@@ -1,0 +1,211 @@
+/* Backspin Labs shared site styles.
+   Copy this file into a site and link it; each site deploys on its own, so don't hotlink.
+   Black and white, one hot orange, and a solid color band down the left of the thing a page
+   is about. Rules of use: docs/SITE_DESIGN_RULES.md */
+
+:root {
+  --page: #ffffff;
+  --ink: #111111;
+  --ink-2: #3d3d3d;
+  --ink-3: #6a6a6a;            /* small print; passes AA on --page and --sheet */
+  --hair: #d6d6d6;             /* decoration only, never the only boundary */
+  --sheet: #f1f1f1;
+  --orange: #ff5a1f;           /* fills and bands only: too light to be text on white */
+  --on-orange: #111111;
+  --c: var(--orange);          /* a product sets --c and --on to its own color */
+  --on: var(--on-orange);
+  --font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --font-text: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --gutter: 20px;
+  --max: 1200px;
+  color-scheme: light dark;
+}
+
+/* Follows the visitor's system setting. Force one with <html data-theme="light"> or "dark". */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0f0f0f; --ink: #f2f2f2; --ink-2: #c9c9c9; --ink-3: #9a9a9a; --hair: #333333; --sheet: #1c1c1c;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0f0f0f; --ink: #f2f2f2; --ink-2: #c9c9c9; --ink-3: #9a9a9a; --hair: #333333; --sheet: #1c1c1c;
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 400 17px/1.55 var(--font-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The condensed face is for the studio name, product names, and the one headline on a page.
+   Everything else is the text face. */
+h1 { margin: 0 0 16px; font: 800 clamp(40px, 4.6vw, 60px)/.98 var(--font-display); max-width: 19ch; text-wrap: balance; }
+h2 { margin: 0 0 12px; font: 600 clamp(22px, 2.2vw, 28px)/1.22 var(--font-text); letter-spacing: -.01em; max-width: 30ch; }
+h3 { margin: 0 0 6px; font: 600 17px/1.3 var(--font-text); }
+
+p { margin: 0 0 14px; max-width: 60ch; color: var(--ink-2); }
+p:last-child { margin-bottom: 0; }
+ul, ol { color: var(--ink-2); }
+li { margin: 6px 0; }
+
+a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+
+img { max-width: 100%; height: auto; display: block; }
+code, kbd { font-family: var(--font-mono); font-size: .9em; }
+::selection { background: var(--orange); color: var(--on-orange); }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.lede { font-size: 19px; }
+.small { font-size: 15px; color: var(--ink-3); }
+
+/* ---------- Frame: a narrow left column and the page ---------- */
+
+.frame { max-width: var(--max); margin: 0 auto; padding: 32px var(--gutter) 56px; display: grid; gap: 36px; }
+.frame > * { min-width: 0; }
+@media (min-width: 900px) {
+  :root { --gutter: 24px; }
+  .frame { grid-template-columns: 250px minmax(0, 1fr); }
+  .side, .sheet { position: sticky; top: 32px; align-self: start; }
+}
+
+/* Studio column */
+.name { display: block; margin: 0 0 16px; max-width: none; color: var(--ink); font: 800 62px/.9 var(--font-display); text-decoration: none; }
+.name svg { display: block; width: 58px; height: auto; margin-bottom: 12px; }
+.side p { font-size: 16px; }
+.side nav { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; padding-top: 18px; border-top: 3px solid var(--ink); }
+.side nav a { font-weight: 600; }
+
+/* Facts a buyer wants before reading anything else */
+.sheet { background: var(--sheet); padding: 20px; border-top: 3px solid var(--ink); }
+.sheet h2 { margin-bottom: 4px; font-size: 20px; }
+.sheet h3 { margin: 16px 0 4px; font-size: 16px; }
+.sheet p { font-size: 16px; margin-bottom: 8px; }
+.sheet .btn { display: block; margin-top: 16px; }
+
+/* ---------- Product header: the product's color, its mark, and its name ---------- */
+
+.head { background: var(--c); color: var(--on); }
+.head-in { max-width: 1160px; margin: 0 auto; padding: 14px var(--gutter); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 24px; }
+.brand { display: flex; align-items: center; gap: .18em; font: 800 clamp(48px, 7vw, 88px)/.9 var(--font-display); text-decoration: none; }
+.brand img, .brand svg { height: .74em; width: auto; }
+.head nav { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 15px; font-weight: 500; }
+.head .by { font-size: 15px; font-weight: 500; }
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  display: inline-block; padding: 14px 20px; border: 0; background: var(--ink); color: var(--page);
+  font: 600 17px/1.1 var(--font-text); text-align: center; text-decoration: none; cursor: pointer;
+}
+.btn:hover { background: var(--orange); color: var(--on-orange); }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 18px; }
+
+/* ---------- Band: the signature. One per page, around the thing the page is about. ---------- */
+
+.band { position: relative; margin-top: 30px; padding: 0 0 0 44px; border-top: 3px solid var(--ink); }
+.band::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 20px; background: var(--c); }
+@media (min-width: 720px) { .band { padding-left: 56px; } .band::before { width: 24px; } }
+.band > * { padding: 26px 0; border-bottom: 1px solid var(--hair); }
+.band > *:last-child { border-bottom: 0; }
+
+/* A real screenshot, or an example that says it is one. */
+.shot { margin: 16px 0 0; max-width: 620px; }
+.shot img { border: 2px solid var(--ink); }
+.shot figcaption, .cap { margin-top: 8px; font-size: 15px; color: var(--ink-3); }
+.shot-phone { max-width: 300px; }
+
+/* ---------- Sections after the band ---------- */
+
+.section { padding: 28px 0; border-top: 3px solid var(--ink); }
+.band + .section { margin-top: 0; }
+.cols { display: grid; gap: 24px 40px; }
+@media (min-width: 720px) { .cols { grid-template-columns: 1fr 1fr; } }
+.cols ul { margin: 0; padding-left: 1.1em; }
+
+/* Real ordered steps. Plain numerals. */
+.steps { margin: 0; padding-left: 1.3em; max-width: 60ch; }
+.steps li { padding-left: 4px; margin: 0 0 14px; }
+.steps li::marker { font-weight: 600; color: var(--ink); }
+.steps strong { display: block; color: var(--ink); }
+
+/* Questions and answers, all visible. No accordion. */
+.qa { margin: 0; max-width: 64ch; }
+.qa dt { font-weight: 600; margin-top: 20px; }
+.qa dt:first-child { margin-top: 0; }
+.qa dd { margin: 4px 0 0; color: var(--ink-2); }
+
+.note { background: var(--sheet); border-left: 6px solid var(--c); padding: 12px 16px; max-width: 60ch; }
+
+/* ---------- Shelves (the studio page) ---------- */
+
+.shelf { padding: 26px 0 10px; border-top: 3px solid var(--ink); }
+.shelf > h2 { margin-bottom: 14px; }
+.item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 4px 18px; align-items: start; padding: 12px 0 12px 20px; border-left: 12px solid var(--c); margin-bottom: 10px; }
+.item img, .item .noicon { grid-row: span 3; width: 52px; height: 52px; border-radius: 12px; }
+.item img.on-light { background: #e9e9e9; }
+.item b { font: 800 30px/1 var(--font-display); }
+.item b a { text-decoration: none; }
+.item b a:hover { text-decoration: underline; text-decoration-thickness: 3px; }
+.item p { margin: 0; }
+.item .status { font-size: 15px; font-weight: 500; color: var(--ink); }
+@media (min-width: 1100px) {
+  .item { grid-template-columns: 52px 170px minmax(0, 1fr) 170px; align-items: center; }
+  .item img, .item .noicon { grid-row: auto; }
+}
+
+/* ---------- Tables ---------- */
+
+.table-scroll { overflow-x: auto; }
+.table { width: 100%; max-width: 620px; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
+.table th, .table td { text-align: left; vertical-align: top; padding: 8px 20px 8px 0; border-bottom: 1px solid var(--hair); }
+.table thead th { font-weight: 600; border-bottom: 3px solid var(--ink); }
+.table tr:last-child > * { border-bottom: 0; }
+.table .num { text-align: right; padding-right: 0; white-space: nowrap; }
+
+/* ---------- Forms ---------- */
+
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; max-width: 440px; }
+.field label { font-weight: 600; font-size: 15px; }
+input[type="text"], input[type="email"], select, textarea {
+  width: 100%; min-height: 48px; padding: 12px 14px; border: 2px solid var(--ink); border-radius: 0;
+  background: var(--page); color: var(--ink); font: inherit;
+}
+.signup { margin-top: 8px; max-width: 460px; }
+.signup form { display: flex; flex-wrap: wrap; gap: 10px; }
+.signup input { flex: 1 1 200px; min-width: 0; }
+.signup .msg { min-height: 1.4em; margin: 8px 0 0; font-size: 15px; }
+
+/* ---------- Prose (privacy, terms, support, docs) ---------- */
+
+.prose { max-width: 68ch; margin: 0 auto; padding: 40px var(--gutter) 72px; }
+.prose h1 { font-size: clamp(34px, 3vw, 46px); }
+.prose h2 { margin-top: 2em; }
+.prose h3 { margin-top: 1.6em; }
+.prose ul, .prose ol { margin: 0 0 1.1em; padding-left: 1.3em; }
+.prose a { overflow-wrap: anywhere; }
+
+/* ---------- Footer ---------- */
+
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; max-width: none; padding-top: 24px; border-top: 3px solid var(--ink); font-size: 14px; color: var(--ink-3); }
+.foot p { max-width: none; margin: 0; color: inherit; }
+.foot-note { flex-basis: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

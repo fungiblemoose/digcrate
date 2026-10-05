@@ -3,427 +3,142 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DigCrate — Plan DJ sets that mix in key</title>
-  <meta name="description" content="DigCrate reads your local library — BPM, key, and energy — and helps you build DJ sets that mix in key. Local library analysis, set planning and Rekordbox export. Free download; Pro is a one-time purchase." />
-  <meta property="og:title" content="DigCrate — Plan DJ sets that mix in key" />
-  <meta property="og:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings. Free on the Mac App Store." />
-  <meta property="og:url" content="https://digcrate.backspinlabs.com" />
+  <title>DigCrate: Plan DJ sets that mix in key</title>
+  <meta name="description" content="DigCrate is a Mac app that reads the BPM, key, and energy of your local library and helps you build DJ sets that mix in key, then exports them to Rekordbox XML or M3U. Free download; Pro is a one-time purchase." />
+  <link rel="canonical" href="https://digcrate.backspinlabs.com/" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)" />
+  <meta property="og:title" content="DigCrate: Plan DJ sets that mix in key" />
+  <meta property="og:description" content="Analyze your library, plan sets with on-device AI, and export to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings. Free on the Mac App Store." />
+  <meta property="og:url" content="https://digcrate.backspinlabs.com/" />
+  <meta property="og:site_name" content="DigCrate" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://digcrate.backspinlabs.com/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="DigCrate — Plan DJ sets that mix in key" />
-  <meta name="twitter:description" content="Analyze your library, plan sets with on-device AI, and export straight to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings." />
+  <meta name="twitter:title" content="DigCrate: Plan DJ sets that mix in key" />
+  <meta name="twitter:description" content="Analyze your library, plan sets with on-device AI, and export to Rekordbox. Audio analysis runs locally; planning options depend on your Mac and settings." />
   <meta name="twitter:image" content="https://digcrate.backspinlabs.com/og-image.png" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      background: #0a0a0c;
-      color: #e8e8ed;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
-    ::selection { background: rgba(255, 106, 0, 0.25); }
-    a { color: inherit; }
-    .wrap { max-width: 1000px; margin: 0 auto; padding: 0 28px; }
-    @media (min-width: 640px) { .wrap { padding: 0 40px; } }
-    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
-
-    /* Nav */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
-      background: rgba(10, 10, 12, 0.82);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      transition: border-color 0.2s;
-    }
-    nav.scrolled { border-bottom-color: rgba(255,255,255,0.09); }
-    .nav-inner {
-      display: flex; align-items: center; justify-content: space-between; height: 60px;
-    }
-    .nav-brand {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none; color: #f5f5f7; font-weight: 600; font-size: 0.9375rem;
-      letter-spacing: -0.01em;
-    }
-    .nav-brand img { height: 26px; width: auto; border-radius: 6px; }
-    .nav-links { display: flex; align-items: center; gap: 1.5rem; }
-    .nav-links a {
-      font-size: 0.8125rem; color: rgba(245,245,247,0.5); text-decoration: none;
-      transition: color 0.15s;
-    }
-    .nav-links a:hover { color: rgba(245,245,247,0.9); }
-    .nav-cta {
-      display: inline-flex; align-items: center; padding: 0.42rem 0.95rem;
-      background: #ff6a00; color: #fff !important; font-weight: 600; font-size: 0.8125rem;
-      border-radius: 9999px; text-decoration: none; transition: opacity 0.18s;
-    }
-    .nav-cta:hover { opacity: 0.86; }
-    @media (max-width: 639px) {
-      .nav-links a:not(.nav-cta) { display: none; }
-    }
-
-    /* Hero */
-    .hero {
-      min-height: 100vh; display: flex; align-items: center;
-      position: relative; overflow: hidden;
-    }
-    .hero::before {
-      content: ""; position: absolute; top: -40%; left: -20%;
-      width: 70%; height: 80%; border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,106,0,0.09) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .hero::after {
-      content: ""; position: absolute; bottom: -30%; right: -15%;
-      width: 60%; height: 70%; border-radius: 50%;
-      background: radial-gradient(circle, rgba(26,74,68,0.13) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .hero-inner {
-      position: relative; z-index: 1; width: 100%;
-      padding-top: 150px; padding-bottom: 110px;
-    }
-    .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 0.55rem;
-      font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
-      color: rgba(255,255,255,0.42); margin-bottom: 1.5rem;
-    }
-    .hero-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff6a00; }
-    .hero h1 {
-      font-size: clamp(2.7rem, 7.5vw, 5rem); font-weight: 700;
-      letter-spacing: -0.04em; line-height: 1.04; color: #fff; margin-bottom: 1.5rem;
-      max-width: 14ch;
-    }
-    .hero-sub {
-      font-size: clamp(1.02rem, 2vw, 1.18rem); font-weight: 300;
-      line-height: 1.7; color: rgba(255,255,255,0.6); max-width: 560px; margin-bottom: 2.4rem;
-    }
-    .btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.9rem; }
-    .app-store-link {
-      display: inline-flex; line-height: 0;
-      transition: transform 0.15s, opacity 0.18s;
-    }
-    .app-store-link:hover { transform: translateY(-1px); opacity: 0.88; }
-    .app-store-link img { height: 48px; width: auto; display: block; }
-    .btn-ghost {
-      display: inline-flex; align-items: center; padding: 0.72rem 1.4rem;
-      color: rgba(255,255,255,0.6); font-weight: 500; font-size: 0.875rem;
-      text-decoration: none; transition: color 0.18s;
-    }
-    .btn-ghost:hover { color: rgba(255,255,255,0.95); }
-    .btn-ghost::after { content: "→"; margin-left: 0.4rem; transition: transform 0.18s; }
-    .btn-ghost:hover::after { transform: translateX(3px); }
-    .hero-meta {
-      margin-top: 2rem; font-size: 0.8rem; color: rgba(255,255,255,0.4);
-    }
-
-    /* Sections */
-    section { padding: 96px 0; }
-    .section-label {
-      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-      color: #ff6a00; margin-bottom: 0.85rem;
-    }
-    h2 {
-      font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 700;
-      letter-spacing: -0.03em; line-height: 1.12; color: #fff; margin-bottom: 0.9rem;
-    }
-    .section-sub {
-      font-size: 1.02rem; color: rgba(255,255,255,0.5); max-width: 560px;
-      line-height: 1.7; margin-bottom: 2.6rem;
-    }
-
-    /* Tier groups */
-    .tier-head { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.4rem; }
-    .tier-head h3 { font-size: 1.05rem; font-weight: 600; color: #f5f5f7; letter-spacing: -0.01em; }
-    .tier-head .tier-note { font-size: 0.8rem; color: rgba(255,255,255,0.4); }
-    .pro-pill {
-      display: inline-block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em;
-      text-transform: uppercase; color: #ff6a00;
-      background: rgba(255,106,0,0.12); border: 1px solid rgba(255,106,0,0.25);
-      padding: 0.12rem 0.45rem; border-radius: 5px;
-    }
-    .feature-grid {
-      display: grid; grid-template-columns: 1fr; gap: 14px;
-    }
-    @media (min-width: 600px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
-    @media (min-width: 900px) { .feature-grid { grid-template-columns: 1fr 1fr 1fr; } }
-    .feature-card {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px; padding: 26px;
-      transition: background 0.2s, border-color 0.2s;
-    }
-    .feature-card:hover {
-      background: rgba(255,255,255,0.045);
-      border-color: rgba(255,255,255,0.11);
-    }
-    .feature-icon {
-      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-      background: rgba(255,106,0,0.1); border-radius: 10px; margin-bottom: 16px;
-    }
-    .feature-icon svg {
-      width: 21px; height: 21px; stroke: #ff6a00; fill: none;
-      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-    }
-    .feature-card h4 {
-      font-size: 0.95rem; font-weight: 600; color: #f5f5f7; margin-bottom: 8px;
-    }
-    .feature-card p {
-      font-size: 0.84rem; color: rgba(255,255,255,0.46); line-height: 1.65;
-    }
-    .tier-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 56px 0; }
-
-    /* Workflow */
-    .workflow-steps {
-      display: grid; grid-template-columns: 1fr; gap: 12px;
-    }
-    @media (min-width: 640px) { .workflow-steps { grid-template-columns: 1fr 1fr; } }
-    @media (min-width: 900px) { .workflow-steps { grid-template-columns: 1fr 1fr 1fr; } }
-    .step {
-      display: flex; gap: 14px; padding: 22px;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 12px;
-    }
-    .step-num {
-      flex-shrink: 0; width: 30px; height: 30px;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(255,106,0,0.12); color: #ff6a00;
-      font-size: 0.78rem; font-weight: 700; border-radius: 8px;
-    }
-    .step h4 { font-size: 0.9rem; font-weight: 600; color: #f5f5f7; margin-bottom: 4px; }
-    .step p { font-size: 0.82rem; color: rgba(255,255,255,0.42); line-height: 1.6; }
-
-    /* Get section */
-    .get-section { text-align: center; border-top: 1px solid rgba(255,255,255,0.05); }
-    .get-section .section-label { display: block; }
-    .get-section .section-sub { margin-left: auto; margin-right: auto; }
-    .get-actions { display: flex; flex-direction: column; align-items: center; gap: 1.1rem; }
-    .cli-note { font-size: 0.84rem; color: rgba(255,255,255,0.42); }
-    .cli-note a { color: rgba(255,255,255,0.62); text-decoration: underline; text-underline-offset: 2px; }
-    .cli-note a:hover { color: #fff; }
-
-    /* Footer */
-    footer {
-      padding: 52px 0; border-top: 1px solid rgba(255,255,255,0.06);
-      text-align: center;
-    }
-    .footer-links { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 1.25rem; justify-content: center; }
-    .footer-links a { font-size: 0.82rem; color: rgba(255,255,255,0.5); text-decoration: none; }
-    .footer-links a:hover { color: rgba(255,255,255,0.85); }
-    footer .fine {
-      font-size: 0.72rem; color: rgba(255,255,255,0.3); line-height: 1.7;
-      max-width: 600px; margin: 0 auto;
-    }
-    footer .fine a { color: rgba(255,255,255,0.42); }
-    .footer-signup { margin: 0 auto 2rem; max-width: 420px; }
-    .footer-signup-copy { font-size: 0.82rem; color: rgba(255,255,255,0.55); margin-bottom: 0.75rem; }
-    .footer-signup form { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
-    .footer-signup input {
-      flex: 1 1 220px; min-width: 0; background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; color: #f5f5f7;
-      font: inherit; font-size: 0.85rem; padding: 0.6rem 0.8rem; outline: none;
-    }
-    .footer-signup input:focus { border-color: rgba(255,255,255,0.35); }
-    .footer-signup input:focus-visible, .footer-signup button:focus-visible { outline: 2px solid #ff6a00; outline-offset: 2px; }
-    .footer-signup button {
-      background: #ff6a00; border: none; border-radius: 8px; color: #fff;
-      font: inherit; font-size: 0.85rem; font-weight: 600; padding: 0.6rem 1.1rem; cursor: pointer;
-    }
-    .footer-signup button:hover { opacity: 0.88; }
-    .footer-signup button[disabled] { opacity: 0.6; cursor: default; }
-    .footer-signup-msg { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 0.6rem; min-height: 1.2em; }
-    .footer-signup-consent { font-size: 0.7rem; color: rgba(255,255,255,0.35); margin-top: 0.5rem; }
-    .footer-signup-consent a { color: rgba(255,255,255,0.5); }
-    .visually-hidden {
-      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
-    }
-
-.hero{min-height:0}.hero-inner{padding-top:125px;padding-bottom:36px}.hero::before,.hero::after{display:none}section{padding-top:56px;padding-bottom:56px}.product-evidence{padding-top:0}.product-evidence img{display:block;width:100%;height:auto;border:1px solid #333;border-radius:8px}figure{margin:0}figcaption{font-size:.85rem;color:#b4b4bc;margin-top:12px;line-height:1.6}.shot-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px}.feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.feature-card{background:transparent;border:0;border-top:1px solid #333;border-radius:0;padding:22px 0}.feature-icon{display:none}.hero-sub,.section-sub{color:#babac3}a:focus-visible{outline:3px solid #ff6a00;outline-offset:4px}#requirements a,.hero-meta a{color:#ff974d}@media(max-width:600px){.shot-grid,.feature-grid{grid-template-columns:1fr}.hero-inner{padding-top:108px}.hero h1{font-size:2.65rem}section{padding-top:36px;padding-bottom:36px}}
-</style>
-<link rel="canonical" href="https://digcrate.backspinlabs.com/" />
+  <link rel="icon" href="/app-icon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/app-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" />
+  <link rel="stylesheet" href="/backspin.css" />
+  <link rel="stylesheet" href="/digcrate.css" />
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
-<nav>
-  <div class="wrap nav-inner">
-    <a class="nav-brand" href="/">
-      <img src="/logo.png" alt="DigCrate" />
-      DigCrate
-    </a>
-    <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#workflow">How it works</a>
-      <a class="nav-cta" href="https://apps.apple.com/us/app/digcrate/id6779803539">Get DigCrate</a>
-    </div>
-  </div>
-</nav>
+<header class="head"><div class="head-in">
+  <a class="brand" href="/"><img src="/app-icon.png" alt="" width="512" height="512" />DigCrate</a>
+  <nav aria-label="Primary">
+    <a href="#features">What it does</a>
+    <a href="#pricing">Free and Pro</a>
+    <a href="#requirements">What your Mac needs</a>
+    <a href="https://backspinlabs.com">Backspin Labs</a>
+  </nav>
+</div></header>
 
-<!-- Hero -->
-<section class="hero">
-  <div class="wrap hero-inner">
-    <p class="hero-eyebrow"><span class="dot"></span> macOS &middot; Apple Silicon &middot; On-device AI</p>
+<div class="frame">
+
+  <aside class="sheet" aria-labelledby="sheet-title">
+    <h2 id="sheet-title">Before you download</h2>
+    <h3>What you need</h3>
+    <p>A Mac with Apple Silicon and macOS 14 Sonoma or later. No DigCrate account is required.</p>
+    <h3>Price</h3>
+    <p>Free to download. DigCrate Pro is $19.99 once in the US, with no subscription.</p>
+    <h3>What to know</h3>
+    <p>Audio analysis runs on your Mac. Planning with Apple’s on-device model has its own <a href="#requirements">requirements</a>.</p>
+    <a class="btn" href="https://apps.apple.com/us/app/digcrate/id6779803539">Download on the Mac App Store</a>
+  </aside>
+
+  <main id="main">
     <h1>Plan DJ sets that mix in key.</h1>
-    <p class="hero-sub">
-      DigCrate reads your local library — BPM, musical key, and energy — then helps you
-      build sets with clean harmonic transitions and export playlists for your DJ software.
-      Audio analysis runs on your Mac. Plan with Apple’s on-device intelligence or a model server you configure. No DigCrate account required.
-    </p>
-    <div class="btn-row">
-      <a class="app-store-link" href="https://apps.apple.com/us/app/digcrate/id6779803539" aria-label="Download DigCrate on the Mac App Store">
-        <img src="/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="187" height="48" />
-      </a>
-      <a class="btn-ghost" href="#workflow">See how it works</a>
-    </div>
-    <p class="hero-meta">Free download · Pro $19.99 once (US) · macOS 14+ · Apple Silicon. <a href="#requirements">AI requirements</a>.</p>
-  </div>
-</section>
+    <p class="lede">DigCrate reads your local library for BPM, musical key, and energy, then helps you build sets with clean harmonic transitions and export playlists for your DJ software.</p>
+    <p>It is a Mac app, and the audio analysis runs on your Mac. You can plan with Apple’s on-device intelligence or with a model server you configure. No DigCrate account is required.</p>
 
-<section class="product-evidence" aria-label="DigCrate screenshots"><div class="wrap">
-<figure class="main-shot"><a href="/images/build-set.jpg"><img src="/images/build-set.jpg" alt="DigCrate’s Build Set screen from the published Mac App Store listing" width="1600" height="1000" fetchpriority="high"></a><figcaption>Build a set from your library. Screenshot from the published Mac app.</figcaption></figure>
-<div class="shot-grid"><figure><a href="/images/library.jpg"><img src="/images/library.jpg" alt="DigCrate library with analyzed tracks" width="1600" height="1000" loading="lazy"></a><figcaption>Check the library’s BPM, key and energy.</figcaption></figure><figure><a href="/images/gaps.jpg"><img src="/images/gaps.jpg" alt="DigCrate gap analysis screen" width="1600" height="1000" loading="lazy"></a><figcaption>Review gaps before exporting the set.</figcaption></figure></div>
-</div></section>
-<!-- Features -->
-<section id="features">
-  <div class="wrap">
-    <p class="section-label">Features</p>
-    <h2>Your library, analyzed and arranged.</h2>
-    <p class="section-sub">
-      Scanning, analysis, and previews are free out of the box. AI planning and the
-      tools that turn a tracklist into a finished set are a one-time DigCrate Pro
-      purchase of $19.99 in the US — no subscription. Local App Store pricing may vary.
-    </p>
-
-    <div class="tier-head">
-      <h3>Free, out of the box</h3>
-    </div>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 14v4M9 8v10M14 4v14M19 11v7"/></svg></div>
-        <h4>Library analysis</h4>
-        <p>Point DigCrate at a folder and it reads BPM, musical key in 8A-style harmonic notation, and energy for every track — all on your Mac.</p>
+    <section class="band" id="features" aria-label="What it does">
+      <div>
+        <h2>Analyze your library on your Mac</h2>
+        <p>Point DigCrate at a folder and it reads the BPM, the musical key in 8A-style harmonic notation, and the energy of every track. All of it happens on your Mac.</p>
+        <p>Tracks with shaky analysis are flagged in a review queue. Fix a BPM or key by hand, confirm the rest, and keep your library clean.</p>
+        <p>Audition any track from a smart cue point that drops you near the part that matters, instead of the silence at the top. Filter by BPM, key, or energy, run a text search, and see the whole library at a glance, with counts, ranges, and most-common keys.</p>
+        <figure class="shot shot-wide">
+          <img src="/images/library-window.jpg" width="990" height="704" alt="DigCrate’s Library screen, listing 36 analyzed tracks with BPM, key, energy, and confidence columns, plus filters and a review queue" />
+          <figcaption>Check the library’s BPM, key, and energy. Screenshot from the published Mac app.</figcaption>
+        </figure>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg></div>
-        <h4>Track previews</h4>
-        <p>Audition any track from a smart cue point that drops you near the part that matters, instead of the silence at the top.</p>
+      <div id="workflow">
+        <h2>Describe the set, then review the plan</h2>
+        <p>Describe the set in plain English, such as “60-minute liquid roller, mellow start, peak around minute 40,” and the planner picks and orders tracks from your library for flow.</p>
+        <p>Every handoff is scored on the harmonic wheel, with a plain-language note on why it works or why it clashes. Listen through the proposed transitions, and reorder tracks or fill a gap before you export. Harmonic scores are a planning aid; your ears make the final decision.</p>
+        <figure class="shot shot-wide">
+          <img src="/images/build-set-window.jpg" width="990" height="704" alt="DigCrate’s Build Set screen, with a set name, a 60-minute duration, and a prompt reading “60 minute party set. pop remixes and fun”" loading="lazy" />
+          <figcaption>Build a set from your library. Screenshot from the published Mac app.</figcaption>
+        </figure>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M16 14.5l2 2 3.5-4.5"/></svg></div>
-        <h4>Review queue</h4>
-        <p>Tracks with shaky analysis get flagged. Fix a BPM or key by hand, confirm the rest, and keep your library clean.</p>
+      <div>
+        <h2>Find the weak transitions and fill them</h2>
+        <p>Weak transitions are flagged with the BPM, key, and energy of the bridge track that would smooth them over. One click opens Beatport, Spotify, or SoundCloud searches built from the gap’s profile, so you know exactly what to hunt for. Those searches open in your browser.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg></div>
-        <h4>Search &amp; stats</h4>
-        <p>Filter by BPM, key, or energy, run a text search, and see your whole library at a glance — counts, ranges, and most-common keys.</p>
-      </div>
-    </div>
-
-    <div class="tier-divider"></div>
-
-    <div class="tier-head">
-      <h3>DigCrate Pro</h3>
-      <span class="pro-pill">Pro</span>
-      <span class="tier-note">$19.99 once · US App Store</span>
-    </div>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M4.5 7l2 1.2M17.5 15.8l2 1.2M4.5 17l2-1.2M17.5 8.2l2-1.2"/><path d="M12 8.5l1.4 2.1L15.5 12l-2.1 1.4L12 15.5l-1.4-2.1L8.5 12l2.1-1.4z"/></svg></div>
-        <h4>AI set planning</h4>
-        <p>Describe the set in plain English — “60-minute liquid roller, mellow start, peak around minute 40” — and the planner picks and orders tracks for flow.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 5v7l4.5 2.5"/></svg></div>
-        <h4>Transition scoring</h4>
-        <p>Every handoff is scored on the harmonic wheel, with a plain-language note on why it works — or why it clashes.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M3 12h6M15 12h6"/><path d="M9.5 8.5l3 3.5-3 3.5M14.5 8.5l-3 3.5 3 3.5"/></svg></div>
-        <h4>Gap analysis</h4>
-        <p>Weak transitions get flagged with the BPM, key, and energy of the bridge track that would smooth them over.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 13.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4.5"/></svg></div>
-        <h4>Bridge-track discovery</h4>
-        <p>One click opens Beatport, Spotify, or SoundCloud searches built from the gap’s profile, so you know exactly what to hunt for.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 9.5l4 4 4-4"/><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg></div>
-        <h4>Rekordbox &amp; M3U export</h4>
+      <div>
+        <h2>Export to Rekordbox XML or M3U</h2>
         <p>Export a finished set as Rekordbox XML or an M3U playlist with metadata intact, ready to review and import into compatible DJ software.</p>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<section id="workflow"><div class="wrap"><p class="section-label">A set you can review</p><h2>Scan. Plan. Listen. Export.</h2><p class="section-sub">Choose a folder of audio, describe your set and listen through the proposed transitions. Reorder tracks or fill a gap before exporting to Rekordbox XML or M3U. Harmonic scores are a planning aid; your ears make the final decision.</p></div></section>
-<section id="requirements"><div class="wrap"><h2>What your Mac needs.</h2><p class="section-sub">DigCrate runs on Apple Silicon with macOS 14 or later. Apple’s on-device language-model planning requires macOS 26 or later with Apple Intelligence enabled and available. A model server you configure is another option; without an available language model, the planner can fall back to rules-based ordering.</p><p class="section-sub" style="margin-top:1rem">Library analysis is local. A configured model server receives your planning prompt and selected track metadata, so use a server you trust. The current 1.x release does not include Apple Cloud planning. <a href="/privacy.html">Read the privacy details</a>.</p></div></section>
-<!-- Get DigCrate -->
-<section id="get" class="get-section">
-  <div class="wrap">
-    <p class="section-label">Get DigCrate</p>
-    <h2>Built for your Mac.</h2>
-    <p class="section-sub">
-      Free on the Mac App Store. Scan, analyze, and preview your whole library at no cost;
-      unlock planning, scoring, and export with a one-time DigCrate Pro purchase whenever
-      you’re ready. macOS 14 Sonoma or later, Apple Silicon.
-    </p>
-    <div class="get-actions">
-      <a class="app-store-link" href="https://apps.apple.com/us/app/digcrate/id6779803539" aria-label="Download DigCrate on the Mac App Store">
-        <img src="/mac-app-store-badge.svg" alt="Download on the Mac App Store" width="187" height="48" />
-      </a>
-      <p class="cli-note">
-        Prefer the terminal? The open-source <a href="https://github.com/fungiblemoose/digcrate">DigCrate CLI</a> is on GitHub.
-      </p>
-    </div>
-  </div>
-</section>
+    <section class="section" id="pricing" aria-labelledby="pricing-title">
+      <h2 id="pricing-title">Free and Pro</h2>
+      <div class="cols">
+        <div>
+          <h3>Free</h3>
+          <p>$0, out of the box.</p>
+          <p>Library scanning and analysis, track previews, the review queue, and search and stats. You can scan, analyze, and preview your whole library at no cost.</p>
+        </div>
+        <div>
+          <h3>DigCrate Pro</h3>
+          <p>$19.99 once on the US App Store. No subscription.</p>
+          <p>AI set planning, transition scoring, gap analysis, bridge-track discovery, and Rekordbox XML and M3U export.</p>
+        </div>
+      </div>
+      <p class="small" style="margin-top:18px">Pro is a one-time purchase through the Mac App Store, and you can buy it whenever you’re ready. Local App Store pricing may vary.</p>
+    </section>
 
-<!-- Footer -->
-<footer>
-  <div class="wrap">
-    <div class="footer-signup">
-      <p class="footer-signup-copy">Occasional updates on new Backspin Labs tools — no spam.</p>
-      <form id="dc-signup">
-        <label for="dc-signup-email" class="visually-hidden">Email address</label>
-        <input type="email" id="dc-signup-email" name="email" required placeholder="you@example.com" autocomplete="email" inputmode="email" maxlength="254" />
-        <button type="submit">Sign up</button>
-      </form>
-      <p id="dc-signup-msg" class="footer-signup-msg" role="status" aria-live="polite"></p>
-      <p class="footer-signup-consent">By subscribing you agree to receive occasional product updates. See our <a href="/privacy.html">privacy policy</a>.</p>
-    </div>
-    <div class="footer-links">
-      <a href="https://apps.apple.com/us/app/digcrate/id6779803539">Mac App Store</a>
-      <a href="https://github.com/fungiblemoose/digcrate">GitHub</a>
-      <a href="/privacy.html">Privacy</a>
-      <a href="mailto:hi@backspinlabs.com">Contact</a>
-    </div>
-    <p class="fine">
-      DigCrate is made by <a href="https://backspinlabs.com">Backspin Labs</a>.
-      Rekordbox is a trademark of AlphaTheta Corporation; Beatport, Spotify, and SoundCloud
-      are trademarks of their respective owners. DigCrate is not affiliated with or endorsed
-      by any of them. Discovery links open in your browser — audio analysis stays local; model-server connections and browser searches are described in the privacy policy.
-    </p>
-  </div>
-</footer>
+    <section class="section" id="requirements" aria-labelledby="requirements-title">
+      <h2 id="requirements-title">What your Mac needs</h2>
+      <p>DigCrate runs on Apple Silicon with macOS 14 or later. Apple’s on-device language-model planning requires macOS 26 or later with Apple Intelligence enabled and available. A model server you configure is another option; without an available language model, the planner can fall back to rules-based ordering.</p>
+      <p>Library analysis is local. A configured model server receives your planning prompt and selected track metadata, so use a server you trust. The current 1.x release does not include Apple Cloud planning. <a href="/privacy">Read the privacy details</a>.</p>
+    </section>
 
-<script>
-(function () {
-  var nav = document.querySelector("nav");
-  window.addEventListener("scroll", function () {
-    nav.classList.toggle("scrolled", window.scrollY > 20);
-  });
-})();
-</script>
+    <section class="section" id="cli" aria-labelledby="cli-title">
+      <h2 id="cli-title">Command-line version</h2>
+      <p>If you prefer the terminal, the open-source <a href="https://github.com/fungiblemoose/digcrate">DigCrate CLI</a> is on GitHub.</p>
+    </section>
+
+    <section class="section" id="updates" aria-labelledby="signup-title">
+      <h2 id="signup-title">Occasional updates from Backspin Labs</h2>
+      <div class="signup">
+        <form id="dc-signup">
+          <label for="dc-signup-email">Email address</label>
+          <input type="email" id="dc-signup-email" name="email" placeholder="you@example.com" autocomplete="email" inputmode="email" maxlength="254" required />
+          <button class="btn" type="submit">Sign up</button>
+        </form>
+        <p id="dc-signup-msg" class="msg" role="status" aria-live="polite"></p>
+        <p class="small">Updates cover new Backspin Labs tools, with no spam. By subscribing you agree to receive occasional product updates. See our <a href="/privacy">privacy policy</a>.</p>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <p>DigCrate is made by <a href="https://backspinlabs.com">Backspin Labs</a>. Contact: <a href="mailto:hi@backspinlabs.com">hi@backspinlabs.com</a></p>
+      <p><a href="https://apps.apple.com/us/app/digcrate/id6779803539">Mac App Store</a> · <a href="https://github.com/fungiblemoose/digcrate">GitHub</a> · <a href="/privacy">Privacy</a></p>
+      <p class="foot-note">Rekordbox is a trademark of AlphaTheta Corporation; Beatport, Spotify, and SoundCloud are trademarks of their respective owners. DigCrate is not affiliated with or endorsed by any of them. Discovery links open in your browser. Audio analysis stays local; model-server connections and browser searches are described in the privacy policy.</p>
+    </footer>
+  </main>
+
+</div>
 <script>
 // Shared email-capture endpoint. Placeholder — the Belay waitlist worker PR
 // defines the real URL; update CAPTURE_ENDPOINT once that worker is deployed.
@@ -470,6 +185,5 @@ const CAPTURE_ENDPOINT = "https://belay.backspinlabs.com/api/waitlist";
   });
 })();
 </script>
-
 </body>
 </html>

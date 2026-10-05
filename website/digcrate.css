@@ -1,0 +1,28 @@
+/* DigCrate's additions to the shared kit (backspin.css). Keep this small. */
+
+/* DigCrate's color is ink, like its black-and-white app icon. */
+:root { --c: #111111; --on: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --c: #f2f2f2; --on: #111111; }
+}
+:root[data-theme="dark"] { --c: #f2f2f2; --on: #111111; }
+
+.skip { position: absolute; left: 16px; top: -100px; z-index: 10; padding: 8px 12px; background: var(--page); color: var(--ink); }
+.skip:focus { top: 8px; }
+
+/* The icon is black on transparent, so app-icon.png carries a light tile (#e9e9e9).
+   Round it the way macOS does. */
+.brand img, .topline img { border-radius: 22%; background: #e9e9e9; }
+
+/* Mac screenshots are landscape, so they run the width of the band under the text. */
+.shot-wide { max-width: 860px; margin-top: 20px; }
+
+.sheet a:not(.btn) { font-weight: 500; }
+.signup label { flex-basis: 100%; font-weight: 600; font-size: 15px; }
+
+/* Legal pages */
+.topline { max-width: none; margin: 0 0 32px; padding-bottom: 14px; border-bottom: 3px solid var(--ink); }
+.topline a { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 600; text-decoration: none; }
+.topline a:hover { text-decoration: underline; }
+.prose .foot { margin-top: 56px; }
+main > .foot { margin-top: 28px; }
