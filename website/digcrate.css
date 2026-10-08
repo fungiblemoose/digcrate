@@ -7,6 +7,20 @@
 }
 :root[data-theme="dark"] { --c: #f2f2f2; --on: #111111; }
 
+/* In dark mode the band is light ink, but the header stays a dark bar like every other
+   product's header. A near-white bar across the top was the odd one out. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .head { background: #1c1c1c; color: #f2f2f2; border-bottom: 3px solid #f2f2f2; }
+}
+:root[data-theme="dark"] .head { background: #1c1c1c; color: #f2f2f2; border-bottom: 3px solid #f2f2f2; }
+
+/* On a phone the four links wrapped to two rows. What your Mac needs is in the sheet that
+   follows the headline there, so its link is dropped. */
+@media (max-width: 560px) {
+  .head nav { gap: 6px 16px; }
+  .head nav a[href="#requirements"] { display: none; }
+}
+
 .skip { position: absolute; left: 16px; top: -100px; z-index: 10; padding: 8px 12px; background: var(--page); color: var(--ink); }
 .skip:focus { top: 8px; }
 
